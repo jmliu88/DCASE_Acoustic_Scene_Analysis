@@ -623,7 +623,7 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
 
     """
 
-    if classifier_method != 'gmm':
+    if classifier_method not in ['gmm','lstm','dnn']:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
     # Check that target path exists, create if not
@@ -667,8 +667,9 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
                 else:
                     data[item['scene_label']] = numpy.vstack((data[item['scene_label']], feature_data))
 
-            # Train models for each class
+            print classifier_params
             if classifier_method == 'gmm':
+                # Train models for each class
                 for label in data:
                     progress(title_text='Train models',
                             fold=fold,
@@ -803,7 +804,6 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 writer = csv.writer(f, delimiter='\t')
                 for result_item in results:
                     writer.writerow(result_item)
-            pdb.set_trace()
 
 
 def do_classification_lstm(feature_data, model_container):
@@ -876,7 +876,6 @@ def do_classification_gmm(feature_data, model_container):
 
     """
 
-    pdb.set_trace()
     # Initialize log-likelihood matrix to -inf
     logls = numpy.empty(len(model_container['models']))
     logls.fill(-numpy.inf)

@@ -1,6 +1,7 @@
 import lasagne
 import theano
-#from lasagne_cough import run_lstm
+
+import batch
 
 def build(input_var,mask, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, n_hidden_blstm = 125, n_hidden_dense= 256, n_class = 10, max_length = 1000, feat_dim = 60):
 
@@ -48,7 +49,7 @@ def build(input_var,mask, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_
     l_out = lasagne.layers.ReshapeLayer(layer, (-1 ,max_length))
     layers['out'] =l_out
     return l_out, layers
-def do_train_lstm(data, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, n_hidden_blstm = 125, n_hidden_dense= 256, n_class =n_class, max_length = 1000, feat_dim = 60):
+def do_train_lstm(data, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, n_hidden_blstm = 125, n_hidden_dense= 256, n_class =10, max_length = 1000, feat_dim = 60):
     ''' input
         -------
         data: {label:np.array(features)}
@@ -62,11 +63,32 @@ def do_train_lstm(data, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_la
                        params:lasagne.layers.get_all_params(l_out)
                       }
     '''
+    import time
+    import pdb
+    Batch_maker = batch.Batch(data)
+    pdb.set_trace()
+
     input_var = T.tensor3('input')
     mask = T.matrix('mask')
     target_output = T.matrix('target_output')
     nnet,layers = build(input_var, mask, dropout_rate_blstm =dropout_rate_blstm, dropout_rate_dense = dropout_rate_dense, n_layers =n_layers, n_dense = n_dense , n_hidden_blstm = n_hidden_blstm , n_hidden_dense=  n_hidden_dense, n_class =n_class, max_length = 1000, feat_dim =feat_dim)
 
+    loss_train = cost(lasagne.layers.get_output(
+        nnet,  deterministic=False),target_output,mask)
+    loss_eval  = cost(lasagne.layers.get_output(
+        nnet,  deterministic=True),target_output, mask)
+    all_params = lasagne.layers.get_all_params(nnet)
+    updates = lasagne.updates.adadelta(loss_train,all_params,learning_rate=1.0)
+    #updates = lasagne.updates.momentum(loss_train , all_params,
+                                    #learning_rate, momentum)
+    pred_fun = lasagne.layers.get_output(
+            nnet, deterministic=True)
+    train = theano.function([input_var, target_output, mask],loss_train , updates=updates)
+    compute_cost = theano.function([input_var, target_output, mask],loss_eval)
+    predict = theano.function(
+        [input_var, mask], pred_fun)
+
+    ## TODO
     pass
 
 def do_classification_lstm(feature_data, model_container):
