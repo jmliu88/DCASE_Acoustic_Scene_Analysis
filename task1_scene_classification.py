@@ -17,6 +17,8 @@ import argparse
 import textwrap
 
 from sklearn import mixture
+import pdb
+import lstm
 
 __version_info__ = ('1', '0', '0')
 __version__ = '.'.join(__version_info__)
@@ -50,11 +52,14 @@ def main(argv):
                         default=False, dest='challenge')
 
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+    default_parameter_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                  os.path.splitext(os.path.basename(__file__))[0]+'.yaml')
+    parser.add_argument("param", help="Load config file",
+                        default=default_parameter_file)
     args = parser.parse_args()
 
     # Load parameters from config file
-    parameter_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  os.path.splitext(os.path.basename(__file__))[0]+'.yaml')
+    parameter_file = args.param
     params = load_parameters(parameter_file)
     params = process_parameters(params)
     make_folders(params)
@@ -73,6 +78,7 @@ def main(argv):
     elif not args.development and args.challenge:
         print "Running system in challenge mode"
         dataset_evaluation_mode = 'full'
+    print "Loading config file form %s"%parameter_file
 
     # Get dataset container class
     dataset = eval(params['general']['development_dataset'])(data_path=params['path']['data'])
@@ -125,7 +131,7 @@ def main(argv):
     if params['flow']['train_system']:
         section_header('System training')
 
-        do_system_training(dataset=dataset,                           
+        do_system_training(dataset=dataset,
                            model_path=params['path']['models'],
                            feature_normalizer_path=params['path']['feature_normalizers'],
                            feature_path=params['path']['features'],
@@ -145,16 +151,16 @@ def main(argv):
         if params['flow']['test_system']:
             section_header('System testing')
 
-            do_system_testing(dataset=dataset,                              
+            do_system_testing(dataset=dataset,
                               feature_path=params['path']['features'],
                               result_path=params['path']['results'],
                               model_path=params['path']['models'],
                               feature_params=params['features'],
                               dataset_evaluation_mode=dataset_evaluation_mode,
-                              classifier_method=params['classifier']['method'],                              
+                              classifier_method=params['classifier']['method'],
                               overwrite=params['general']['overwrite']
                               )
-            
+
             foot()
 
         # System evaluation
@@ -180,13 +186,13 @@ def main(argv):
         if params['flow']['test_system']:
             section_header('System testing with challenge data')
 
-            do_system_testing(dataset=challenge_dataset,                              
+            do_system_testing(dataset=challenge_dataset,
                               feature_path=params['path']['features'],
                               result_path=params['path']['challenge_results'],
                               model_path=params['path']['models'],
                               feature_params=params['features'],
                               dataset_evaluation_mode=dataset_evaluation_mode,
-                              classifier_method=params['classifier']['method'],                              
+                              classifier_method=params['classifier']['method'],
                               overwrite=True
                               )
 
@@ -549,7 +555,7 @@ def do_feature_normalization(dataset, feature_normalizer_path, feature_path, dat
 
                 # Accumulate statistics
                 normalizer.accumulate(feature_data)
-            
+
             # Calculate normalization factors
             normalizer.finalize()
 
@@ -662,14 +668,18 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
                     data[item['scene_label']] = numpy.vstack((data[item['scene_label']], feature_data))
 
             # Train models for each class
-            for label in data:
-                progress(title_text='Train models',
-                         fold=fold,
-                         note=label)
-                if classifier_method == 'gmm':
+            if classifier_method == 'gmm':
+                for label in data:
+                    progress(title_text='Train models',
+                            fold=fold,
+                            note=label)
                     model_container['models'][label] = mixture.GMM(**classifier_params).fit(data[label])
-                else:
-                    raise ValueError("Unknown classifier method ["+classifier_method+"]")
+            elif classifier_method == 'lstm':
+                model_container['models'] = lstm.do_train_lstm(data,**classifier_params)
+            elif classifier_method == 'dnn':
+                model_container['models'] = dnn.do_train(data,**classifier_params)
+            else:
+                raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
             # Save models
             save_data(current_model_file, model_container)
@@ -749,10 +759,10 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                          fold=fold,
                          percentage=(float(file_id) / file_count),
                          note=os.path.split(item['file'])[1])
-                
+
                 # Load features
                 feature_filename = get_feature_filename(audio_file=item['file'], path=feature_path)
-                
+
                 if os.path.isfile(feature_filename):
                     feature_data = load_data(feature_filename)['feat']
                 else:
@@ -778,6 +788,10 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 # Do classification for the block
                 if classifier_method == 'gmm':
                     current_result = do_classification_gmm(feature_data, model_container)
+                elif classifier_method == 'lstm':
+                    current_result = lstm.do_classification_lstm(feature_data, model_container)
+                elif classifier_method == 'dnn':
+                    model_container['models'] = dnn.do_classification_dnn(data,**classifier_params)
                 else:
                     raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
@@ -789,7 +803,48 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 writer = csv.writer(f, delimiter='\t')
                 for result_item in results:
                     writer.writerow(result_item)
+            pdb.set_trace()
 
+
+def do_classification_lstm(feature_data, model_container):
+    """GMM classification for give feature matrix
+
+    model container format:
+
+    {
+        'normalizer': normalizer class
+        'models' :
+            {
+                'office' : mixture.GMM class
+                'home' : mixture.GMM class
+                ...
+            }
+    }
+
+    Parameters
+    ----------
+    feature_data : numpy.ndarray [shape=(t, feature vector length)]
+        feature matrix
+
+    model_container : dict
+        model container
+
+    Returns
+    -------
+    result : str
+        classification result as scene label
+
+    """
+
+    # Initialize log-likelihood matrix to -inf
+    logls = numpy.empty(len(model_container['models']))
+    logls.fill(-numpy.inf)
+
+    for label_id, label in enumerate(model_container['models']):
+        logls[label_id] = numpy.sum(model_container['models'][label].score(feature_data))
+
+    classification_result_id = numpy.argmax(logls)
+    return model_container['models'].keys()[classification_result_id]
 
 def do_classification_gmm(feature_data, model_container):
     """GMM classification for give feature matrix
@@ -821,6 +876,7 @@ def do_classification_gmm(feature_data, model_container):
 
     """
 
+    pdb.set_trace()
     # Initialize log-likelihood matrix to -inf
     logls = numpy.empty(len(model_container['models']))
     logls.fill(-numpy.inf)

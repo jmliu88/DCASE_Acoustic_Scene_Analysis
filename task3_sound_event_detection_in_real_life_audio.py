@@ -33,7 +33,7 @@ def main(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=textwrap.dedent('''\
             DCASE 2016
-            Task 3: Sound Event Detection in Real-life Audio 
+            Task 3: Sound Event Detection in Real-life Audio
             Baseline System
             ---------------------------------------------
                 Tampere University of Technology / Audio Research Group
@@ -148,7 +148,7 @@ def main(argv):
         if params['flow']['test_system']:
             section_header('System testing     [Development data]')
 
-            do_system_testing(dataset=dataset,                              
+            do_system_testing(dataset=dataset,
                               result_path=params['path']['results'],
                               feature_path=params['path']['features'],
                               model_path=params['path']['models'],
@@ -183,7 +183,7 @@ def main(argv):
         if params['flow']['test_system']:
             section_header('System testing     [Challenge data]')
 
-            do_system_testing(dataset=challenge_dataset,                              
+            do_system_testing(dataset=challenge_dataset,
                               result_path=params['path']['challenge_results'],
                               feature_path=params['path']['features'],
                               model_path=params['path']['models'],
@@ -548,10 +548,10 @@ def do_feature_normalization(dataset, feature_normalizer_path, feature_path, dat
     for fold in dataset.folds(mode=dataset_evaluation_mode):
         for scene_id, scene_label in enumerate(dataset.scene_labels):
             current_normalizer_file = get_feature_normalizer_filename(fold=fold, scene_label=scene_label, path=feature_normalizer_path)
-            
+
             if not os.path.isfile(current_normalizer_file) or overwrite:
                 # Collect sequence files from scene class
-                files = []                
+                files = []
                 for item_id, item in enumerate(dataset.train(fold, scene_label=scene_label)):
                     if item['file'] not in files:
                         files.append(item['file'])
