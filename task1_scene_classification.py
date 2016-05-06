@@ -99,6 +99,9 @@ def main(argv):
             for item_id, item in enumerate(dataset.train(fold)):
                 if item['file'] not in files:
                     files.append(item['file'])
+            for item_id, item in enumerate(dataset.val(fold)):
+                if item['file'] not in files:
+                    files.append(item['file'])
             for item_id, item in enumerate(dataset.test(fold)):
                 if item['file'] not in files:
                     files.append(item['file'])
@@ -667,6 +670,30 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
                 else:
                     data[item['scene_label']] = numpy.vstack((data[item['scene_label']], feature_data))
 
+            file_count = len(dataset.val(fold))
+            data_val = {}
+            for item_id, item in enumerate(dataset.val(fold)):
+                progress(title_text='Collecting data_val',
+                         fold=fold,
+                         percentage=(float(item_id) / file_count),
+                         note=os.path.split(item['file'])[1])
+
+                # Load features
+                feature_filename = get_feature_filename(audio_file=item['file'], path=feature_path)
+                if os.path.isfile(feature_filename):
+                    feature_data = load_data(feature_filename)['feat']
+                else:
+                    raise IOError("Features not found [%s]" % (item['file']))
+
+                # Scale features
+                feature_data = model_container['normalizer'].normalize(feature_data)
+
+                # Store features per class label
+                if item['scene_label'] not in data_val:
+                    data_val[item['scene_label']] = [feature_data]
+                else:
+                    #data[item['scene_label']] = numpy.vstack((data[item['scene_label']], feature_data))
+                    data_val[item['scene_label']].append( feature_data)
             print classifier_params
             if classifier_method == 'gmm':
                 # Train models for each class
@@ -676,9 +703,9 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
                             note=label)
                     model_container['models'][label] = mixture.GMM(**classifier_params).fit(data[label])
             elif classifier_method == 'lstm':
-                model_container['models'] = lstm.do_train_lstm(data,**classifier_params)
+                model_container['models'] = lstm.do_train_lstm(data, data_val,**classifier_params)
             elif classifier_method == 'dnn':
-                model_container['models'] = dnn.do_train(data,**classifier_params)
+                model_container['models'] = dnn.do_train(data, data_val,**classifier_params)
             else:
                 raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
@@ -766,25 +793,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
 
                 if os.path.isfile(feature_filename):
                     feature_data = load_data(feature_filename)['feat']
-                else:
-                    # Load audio
-                    if os.path.isfile(dataset.relative_to_absolute_path(item['file'])):
-                        y, fs = load_audio(filename=dataset.relative_to_absolute_path(item['file']), mono=True, fs=feature_params['fs'])
-                    else:
-                        raise IOError("Audio file not found [%s]" % (item['file']))
-
-                    feature_data = feature_extraction(y=y,
-                                                      fs=fs,
-                                                      include_mfcc0=feature_params['include_mfcc0'],
-                                                      include_delta=feature_params['include_delta'],
-                                                      include_acceleration=feature_params['include_acceleration'],
-                                                      mfcc_params=feature_params['mfcc'],
-                                                      delta_params=feature_params['mfcc_delta'],
-                                                      acceleration_params=feature_params['mfcc_acceleration'],
-                                                      statistics=False)['feat']
-
-                # Normalize features
-                feature_data = model_container['normalizer'].normalize(feature_data)
+                else:model_container['normalizer'].normalize(feature_data)
 
                 # Do classification for the block
                 if classifier_method == 'gmm':
@@ -792,7 +801,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 elif classifier_method == 'lstm':
                     current_result = lstm.do_classification_lstm(feature_data, model_container)
                 elif classifier_method == 'dnn':
-                    model_container['models'] = dnn.do_classification_dnn(data,**classifier_params)
+                    current_result = dnn.do_classification_dnn(data,**classifier_params)
                 else:
                     raise ValueError("Unknown classifier method ["+classifier_method+"]")
 

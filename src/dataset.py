@@ -12,6 +12,7 @@ from sklearn.cross_validation import StratifiedShuffleSplit, KFold
 from ui import *
 from general import *
 from files import *
+import pdb
 
 
 class Dataset(object):
@@ -78,6 +79,9 @@ class Dataset(object):
 
         # Training meta data for folds
         self.evaluation_data_train = {}
+
+        # Validating meta data for folds, added by James
+        self.evaluation_data_val = {}
 
         # Testing meta data for folds
         self.evaluation_data_test = {}
@@ -711,6 +715,67 @@ class Dataset(object):
                 self.evaluation_data_train[0] = data
 
         return self.evaluation_data_train[fold]
+    def val(self, fold=0):
+        """List of validating items.
+
+        Parameters
+        ----------
+        fold : int > 0 [scalar]
+            Fold id, if zero all meta data is returned.
+            (Default value=0)
+
+        Returns
+        -------
+        list : list of dicts
+            List containing all meta data assigned to validating set for given fold.
+
+        """
+
+        if fold not in self.evaluation_data_val:
+            self.evaluation_data_val[fold] = []
+            if fold > 0:
+                with open(os.path.join(self.evaluation_setup_path, 'fold' + str(fold) + '_val.txt'), 'rt') as f:
+                    for row in csv.reader(f, delimiter='\t'):
+                        if len(row) == 2:
+                            # Scene meta
+                            self.evaluation_data_val[fold].append({
+                                'file': self.relative_to_absolute_path(row[0]),
+                                'scene_label': row[1]
+                            })
+                        elif len(row) == 4:
+                            # Audio tagging meta
+                            self.evaluation_data_val[fold].append({
+                                'file': self.relative_to_absolute_path(row[0]),
+                                'scene_label': row[1],
+                                'tag_string': row[2],
+                                'tags': row[3].split(';')
+                            })
+                        elif len(row) == 5:
+                            # Event meta
+                            self.evaluation_data_val[fold].append({
+                                'file': self.relative_to_absolute_path(row[0]),
+                                'scene_label': row[1],
+                                'event_onset': float(row[2]),
+                                'event_offset': float(row[3]),
+                                'event_label': row[4]
+                            })
+            else:
+                data = []
+                for item in self.meta:
+                    if 'event_label' in item:
+                        data.append({'file': self.relative_to_absolute_path(item['file']),
+                                     'scene_label': item['scene_label'],
+                                     'event_onset': item['event_onset'],
+                                     'event_offset': item['event_offset'],
+                                     'event_label': item['event_label'],
+                                     })
+                    else:
+                        data.append({'file': self.relative_to_absolute_path(item['file']),
+                                     'scene_label': item['scene_label']
+                                     })
+                self.evaluation_data_val[0] = data
+
+        return self.evaluation_data_val[fold]
 
     def test(self, fold=0):
         """List of testing items.
@@ -933,7 +998,7 @@ class TUTAcousticScenes_2016_DevelopmentSet(Dataset):
                 for row in reader:
                     if row[0] not in meta_data:
                         meta_data[row[0]] = row[1]
-                                    
+
                 f.close()
                 # Read evaluation files in
                 eval_filename = os.path.join(self.evaluation_setup_path, 'fold' + str(fold) + '_evaluate.txt')
@@ -1133,6 +1198,7 @@ class TUTSoundEvents_2016_DevelopmentSet(Dataset):
                 meta_file_handle.close()
 
     def train(self, fold=0, scene_label=None):
+        pdb.set_trace()
         if fold not in self.evaluation_data_train:
             self.evaluation_data_train[fold] = {}
             for scene_label_ in self.scene_labels:
@@ -1489,9 +1555,9 @@ class CHiMEHome_DomesticAudioTag_DevelopmentSet(Dataset):
                     refined_files.append(self.relative_to_absolute_path(os.path.join('chime_home','chunks',row[1]+'.wav')))
 
             fold = 1
-            files = numpy.array(refined_files) 
+            files = numpy.array(refined_files)
 
-            for train_index, test_index in kf:                
+            for train_index, test_index in kf:
 
                 train_files = files[train_index]
                 test_files = files[test_index]

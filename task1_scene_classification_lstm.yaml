@@ -74,4 +74,6 @@ classifier_parameters:
     dropout_rate_dense: 0.5
     n_dense: 3
     n_hidden_dense: 125
-    n_class: 10
+    n_class: 15
+    max_length: 1000
+    feat_dim: 60
