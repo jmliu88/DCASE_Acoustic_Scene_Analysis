@@ -2,21 +2,27 @@ import numpy as np
 import pdb
 import random
 import sys
-labels = ['residential_area',
-            'bus',
-            'cafe',
-            'car',
-            'city_center',
-            'forest_path',
-            'grocery_store',
-            'home',
-            'lakeside_beach',
-            'library',
-            'metro_station',
-            'office',
-            'train',
-            'tram',
-            'urban_park']
+
+from src.files import *
+labels = load_labels('data/TUT-acoustic-scenes-2016-development/labels.txt')
+#['residential_area',
+#            'bus',
+#            'cafe',
+#            'car',
+#            'city_center',
+#            'forest_path',
+#            'grocery_store',
+#            'home',
+#            'library',
+#            'metro_station',
+#            'office',
+#            'train',
+#            'tram',
+#            'urban_park',
+#            'beach',
+#            'cafe/restaurant',
+#            'park',
+#            'lakeside_beach']
 def label2index(lab):
     ''' Find the corresponding index of label from the global label variable.
         input:
@@ -39,7 +45,7 @@ class Batch():
         e.g.:
         Batch_maker = Batch(data)
     '''
-    def __init__(self, data, seg_window = 1000, seg_hop = 100,  MAX_BATCH_SIZE = 100,isShuffle = False):
+    def __init__(self, data, seg_window = 1000, seg_hop = 100,  max_batchsize = 100,isShuffle = False):
         self.data = data
         self.seg_window = seg_window
         self.seg_hop = seg_hop
@@ -49,7 +55,7 @@ class Batch():
         self.isShuffle = isShuffle
         if isShuffle:
             random.shuffle(self.index)
-        self.batchsize= MAX_BATCH_SIZE
+        self.batchsize= max_batchsize
         self.n_batch = len(self.index)/self.batchsize
     def get_seg(self):
         data = self.data
@@ -61,16 +67,17 @@ class Batch():
             for i_start in range(0,(num_frames-seg_window)/seg_hop):
                 seg.append((k,i_start*seg_hop,i_start*seg_hop+seg_window))
         self.seg = seg
-    def get_train_batch(self):
+    def get_batch(self):
         #pdb.set_trace()
         index = self.index
         batchsize = min(self.batchsize, len(self.index))
         x = np.zeros(shape=(batchsize,self.seg_window,self.data.values()[0].shape[1]))
         y = np.zeros(shape=(batchsize,1))
-        m = np.ones(shape=(batchsize,self.seg_window,self.data.values()[0].shape[1]))
+        m = np.ones(shape=(batchsize,self.seg_window))
         for i in range(batchsize):
             k,st,en = self.seg[index[i]]
             x[i] = self.data[k][st:en]
+            assert(not np.any(np.isnan(x[i])))
             y[i] = label2index(k)
         self.index = np.delete(self.index,range(batchsize))
 

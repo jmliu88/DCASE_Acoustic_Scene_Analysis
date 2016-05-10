@@ -65,6 +65,7 @@ features:
 classifier:
   method: lstm                  # The system supports only gmm
   parameters: !!null            # Parameters are copied from classifier_parameters based on defined method
+  overwrite: true
 
 classifier_parameters:
   lstm:

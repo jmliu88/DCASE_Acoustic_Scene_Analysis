@@ -1,8 +1,16 @@
 import lasagne
 import theano
 import theano.tensor as T
+import numpy as np
+import time
 
 import batch
+
+def framewise_onehot(y, length=1000):
+    y_hat = np.zeros(shape = (y.shape[0], length, 15))
+    for i in range(y.shape[0]):
+        y_hat[i,:,int(y[i])] = 1
+    return y_hat
 
 def build(input_var,mask, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, n_hidden_blstm = 125, n_hidden_dense= 256, n_class = 10, max_length = 1000, feat_dim = 60):
 
@@ -18,10 +26,10 @@ def build(input_var,mask, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_
     layer = l_in
     layers = {'in':layer}
     layer = lasagne.layers.GaussianNoiseLayer(layer)
-    layer = lasagne.layers.ReshapeLayer(layer , (-1 ,feat_dim))
+    #layer = lasagne.layers.ReshapeLayer(layer , (-1 ,feat_dim))
     for iLayer in range(n_layers):
-        layer = lasagne.layers.DropoutLayer(layer,p=dropout_rate_blstm)
-        layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length,n_hidden_dense))
+        #layer = lasagne.layers.DropoutLayer(layer,p=dropout_rate_blstm)
+        #layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length,n_hidden_blstm))
 
         l_forward_1 = lasagne.layers.LSTMLayer(
             layer, num_units=n_hidden_blstm/2, name='Forward LSTM %d'%iLayer, mask_input=l_mask)
@@ -36,20 +44,26 @@ def build(input_var,mask, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_
         l_forward_1.forgetgate=lasagne.layers.Gate(W_in=lasagne.init.Normal(0.1), W_hid=lasagne.init.Normal(0.1), W_cell=lasagne.init.Normal(0.1), b=lasagne.init.Constant(1.))#w_in_to_ingate.set_value(val['w_in_to_ingate'].astype('float32'))
         l_backward_1.forgetgate=lasagne.layers.Gate(W_in=lasagne.init.Normal(0.1), W_hid=lasagne.init.Normal(0.1), W_cell=lasagne.init.Normal(0.1), b=lasagne.init.Constant(1.))#w_in_to_ingate.set_value(val['w_in_to_ingate'].astype('float32'))
 
-        layer = lasagne.layers.ReshapeLayer(layer , (-1,n_hidden_blstm))
+    layer = lasagne.layers.ReshapeLayer(layer , (-1,n_hidden_blstm))
 
     for iLayer in range(n_dense):
         layer = lasagne.layers.DropoutLayer(layer,p = dropout_rate_dense)
-        layer = lasagne.layers.DenseLayer(layer, num_units= n_hidden_dense, nonlinearity = lasagne.nonlinearities.leaky_rectify,W = lasagne.init.Normal(0.1,0),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
+        #layer = lasagne.layers.DenseLayer(layer, num_units= n_hidden_dense, nonlinearity = lasagne.nonlinearities.leaky_rectify,W = lasagne.init.Orthogonal(np.sqrt(2/(1+0.01**2))),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
+        layer = lasagne.layers.DenseLayer(layer, num_units= n_hidden_dense, nonlinearity = lasagne.nonlinearities.tanh,W = lasagne.init.Orthogonal(np.sqrt(2/(1+0.01**2))),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
         layers['dense_%d'%iLayer] = layer
     layer= lasagne.layers.DenseLayer(
-        layer, num_units=n_class, nonlinearity=lasagne.nonlinearities.sigmoid, W = lasagne.init.Normal(0.1,0),b = lasagne.init.Constant(1),
+        layer, num_units=n_class, nonlinearity=lasagne.nonlinearities.softmax, W = lasagne.init.Normal(0.1,0),b = lasagne.init.Constant(1),
         name='Dense Softmax')
     layers['output'] = layer
     #pdb.set_trace()
-    l_out = lasagne.layers.ReshapeLayer(layer, (-1 ,max_length))
+    l_out = lasagne.layers.ReshapeLayer(layer, (-1 ,max_length, n_class))
     layers['out'] =l_out
     return l_out, layers
+def cost_prev(output,target_output,mask):
+    return -T.sum(mask.dimshuffle(0, 1, 'x') *
+                target_output*T.log(output))/(mask.shape[0])
+def cost(output,target_output,mask):
+    return -T.sum(target_output*T.log(output))/(output.shape[0])
 def do_train_lstm(data, data_val, **classifier_parameters):
     ''' input
         -------
@@ -66,17 +80,18 @@ def do_train_lstm(data, data_val, **classifier_parameters):
     '''
     import time
     import pdb
-    Batch_maker = batch.Batch(data, isShuffle = True)
+    batch_maker = batch.Batch(data, isShuffle = True)
 
     input_var = T.tensor3('input')
     mask = T.matrix('mask')
-    target_output = T.matrix('target_output')
+    target_output = T.tensor3('target_output')
     nnet,layers = build(input_var, mask, **classifier_parameters)
 
+    eps = 1e-50
     loss_train = cost(lasagne.layers.get_output(
-        nnet,  deterministic=False),target_output,mask)
+        nnet,  deterministic=False)+eps,target_output,mask)
     loss_eval  = cost(lasagne.layers.get_output(
-        nnet,  deterministic=True),target_output, mask)
+        nnet,  deterministic=True)+eps,target_output, mask)
     all_params = lasagne.layers.get_all_params(nnet)
     updates = lasagne.updates.adadelta(loss_train,all_params,learning_rate=1.0)
     #updates = lasagne.updates.momentum(loss_train , all_params,
@@ -88,9 +103,86 @@ def do_train_lstm(data, data_val, **classifier_parameters):
     predict = theano.function(
         [input_var, mask], pred_fun)
 
-    ## TODO
-    pass
+    def calc_error(data_test):
+        ''' return error, cost on that set'''
 
-def do_classification_lstm(feature_data, model_container):
-    current_result = 1
-    return current_result
+        b = batch.Batch(data_test, max_batchsize=500)
+        err = 0
+        cost_val=0
+        for (x,y,m) in b:
+            y = framewise_onehot(y,x.shape[1])
+            decision=predict(x.astype('float32'),m.astype('float32'))
+            pred_label= np.argmax(decision,axis=2)
+            y_lab = np.argmax(y,axis=2)
+            #pdb.set_trace()
+
+            cost_val += -np.sum(y*np.log(decision))
+            #pdb.set_trace()
+            err += np.sum( (pred_label!= y_lab ))
+        err = err/len(b.index_bkup)
+        cost_val =cost_val /len(b.index_bkup)
+        return err , cost_val
+
+#theano.config.warn_float64='pdb'
+    print "start training"
+
+    err, cost_test = calc_error(data_val)
+    epoch = 0
+    best_cost = np.inf
+    best_epoch = epoch
+    model_params = []
+    # TO REMOVE
+    #model_params.append(lasagne.layers.get_all_param_values(nnet))
+    while epoch < 2:
+
+        start_time = time.time()
+        cost_train = 0
+        for _, (x ,y ,m) in enumerate(batch_maker):
+            x =x .astype('float32')
+            m = np.ones_like(m)
+            m=m.astype('float32')
+            y = framewise_onehot(y, x.shape[1])
+            y=y.astype('float32')
+
+            assert(not np.any(np.isnan(x)))
+            cost_train+= train(x, y, m) *x .shape[0]#*x .shape[1]
+            assert(not np.isnan(cost_train))
+            err_val, cost_val = calc_error(data_val)
+            #cost_val, err_val = 0, 0
+        #pdb.set_trace()
+        end_time = time.time()
+
+        print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val)
+        model_params.append(lasagne.layers.get_all_param_values(nnet))
+        #savename = os.path.join(modelDir,'epoch_{}.npz'.format(epoch))
+        #files.save_model(savename,structureDic,lasagne.layers.get_all_param_values(nnet))
+        is_better = False
+        if cost_val < best_cost:
+            best_cost =cost_val
+            best_epoch = epoch
+            is_better = True
+        if epoch - best_epoch >= no_best:
+            ## Early stoping
+            break
+        epoch += 1
+    return (classifier_parameters, model_params[best_epoch])
+
+
+def build_model(params):
+    input_var = T.tensor3('input')
+    mask = T.matrix('mask')
+    target_output = T.tensor3('target_output')
+
+    nnet,layers = build(input_var, mask, **params[0])
+    lasagne.layers.set_all_params(nnet,params[1])
+
+    pred_fun = lasagne.layers.get_output( nnet, deterministic=True)
+    predict = theano.function( [input_var, mask], pred_fun)
+
+    return predict
+
+
+def do_classification_lstm(feature_data):
+    decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
+    pred_label = np.argmax(np.sum(decision,axis=1), axis = -1)
+    return batch.labels[pred_label]

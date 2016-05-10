@@ -131,9 +131,11 @@ def main(argv):
 
     # System training
     # ==================================================
+    #pdb.set_trace()
     if params['flow']['train_system']:
         section_header('System training')
 
+        #pdb.set_trace()
         do_system_training(dataset=dataset,
                            model_path=params['path']['models'],
                            feature_normalizer_path=params['path']['feature_normalizers'],
@@ -141,7 +143,7 @@ def main(argv):
                            classifier_params=params['classifier']['parameters'],
                            classifier_method=params['classifier']['method'],
                            dataset_evaluation_mode=dataset_evaluation_mode,
-                           overwrite=params['general']['overwrite']
+                           overwrite=params['classifier']['overwrite']
                            )
 
         foot()
@@ -570,7 +572,7 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
                        dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=False):
     """System training
 
-    model container format:
+    moden container format:
 
     {
         'normalizer': normalizer class
@@ -626,6 +628,7 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
 
     """
 
+    #pdb.set_trace()
     if classifier_method not in ['gmm','lstm','dnn']:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
@@ -690,10 +693,11 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
 
                 # Store features per class label
                 if item['scene_label'] not in data_val:
-                    data_val[item['scene_label']] = [feature_data]
+                    data_val[item['scene_label']] = feature_data
+                    #data_val[item['scene_label']] = [feature_data]
                 else:
-                    #data[item['scene_label']] = numpy.vstack((data[item['scene_label']], feature_data))
-                    data_val[item['scene_label']].append( feature_data)
+                    data_val[item['scene_label']] = numpy.vstack((data_val[item['scene_label']], feature_data))
+                    #data_val[item['scene_label']].append(feature_data)
             print classifier_params
             if classifier_method == 'gmm':
                 # Train models for each class
@@ -704,6 +708,7 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
                     model_container['models'][label] = mixture.GMM(**classifier_params).fit(data[label])
             elif classifier_method == 'lstm':
                 model_container['models'] = lstm.do_train_lstm(data, data_val,**classifier_params)
+                ## add training log
             elif classifier_method == 'dnn':
                 model_container['models'] = dnn.do_train(data, data_val,**classifier_params)
             else:
@@ -763,7 +768,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
 
     """
 
-    if classifier_method != 'gmm':
+    if classifier_method not in  ['gmm','lstm','dnn']:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
     # Check that target path exists, create if not
@@ -778,6 +783,8 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
             model_filename = get_model_filename(fold=fold, path=model_path)
             if os.path.isfile(model_filename):
                 model_container = load_data(model_filename)
+                if classifier_method == 'lstm':
+                    predict = lstm.build_model( model_container)
             else:
                 raise IOError("Model file not found [%s]" % model_filename)
 
@@ -799,7 +806,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 if classifier_method == 'gmm':
                     current_result = do_classification_gmm(feature_data, model_container)
                 elif classifier_method == 'lstm':
-                    current_result = lstm.do_classification_lstm(feature_data, model_container)
+                    current_result = lstm.do_classification_lstm(feature_data,predict)
                 elif classifier_method == 'dnn':
                     current_result = dnn.do_classification_dnn(data,**classifier_params)
                 else:
