@@ -8,9 +8,14 @@ import numpy
 import theano
 import theano.tensor as T
 import lasagne
-'''
 
-def do_classification_dnn(feature_data, depth=3, width = 1024, drop_input=.2, drop_hidden=.5):
+feature_data:  array-(1501,60)
+data['beach']: array-(*   ,60)
+
+'''
+# create neural network
+def build_dnn(feature_data, depth=3, width = 1024, drop_input=.2, drop_hidden=.5):
+	# feature_data: numpy.ndarray [shape=(t, feature vector length)]
 	# depth: number of hidden layers
 	# width: number of units in each hidden layer
 	feature_length = feature_data.shape[1]   # feature_data shape???
@@ -27,6 +32,7 @@ def do_classification_dnn(feature_data, depth=3, width = 1024, drop_input=.2, dr
 											nonlinearity=nonlin)
 		if drop_hidden:
 			network = lasagne.layers.dropout(network, p=drop_hidden)
+
 	# output layer
 	softmax = lasagne.nonlinearities.softmax
 	network = lasagne.layers.DenseLayer(network, 15, nonlinearity=softmax)
@@ -46,11 +52,19 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 		yield inputs[excerpt], targets[excerpt]
 
 
+# train dnn 
 def do_train(data, num_epochs=10):
+	'''
+	return 
+	'''
     # prepare theano variables for inputs and targets
-	input_var = T.tensor('inputs')
+	input_var = T.tensor3('inputs')
 	target_var = T.ivector('targets')
 	
+	network = build_dnn(input_var,
+						int(depth),	int(width),
+						float(drop_in),	float(drop_hid))
+
 	# create a loss expression for training
 	prediction = lasagne.layers.get_output(network)
 	loss = lasagne.objectives.categorical_crossentropy(prediction,target_var)
@@ -68,6 +82,9 @@ def do_train(data, num_epochs=10):
 	test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_val)
 	test_loss = test_loss.mean()
 
+	# return test_prediction and target, delete code for err & acc
+	
+	
 	# create an expression for classification accuracy
 	test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),dtype=theano.config.floatx)
 
@@ -108,7 +125,8 @@ def do_train(data, num_epochs=10):
 		print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
 		print("  validation accuracy:\t\t{:.2f} %".format(
 			val_acc / val_batches * 100))
-	
+
+	'''
 	# After training, we compute and print the test error:
 	test_err = 0
 	test_acc = 0
@@ -123,6 +141,11 @@ def do_train(data, num_epochs=10):
 	print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
 	print("  test accuracy:\t\t{:.2f} %".format(
 			test_acc / test_batches * 100))
+	'''
+
+    model_params = lasagne.layers.get_all_param_values(network)
+    return model_params
+	
 
 '''
 def load_feature_data():
@@ -136,6 +159,36 @@ if __name__ == '__main__':
 	data = load_feature_data()
 	
 '''
+
+def build_model(model_params):
+	input_var = T.tensor3('inputs')
+	target_var = T.ivector('targets')
+	
+	network = build_dnn(input_var,
+						int(depth),	int(width),
+						float(drop_in),	float(drop_hid))
+	lasagne.layers.set_all_params(network,model_params)
+
+	prediction = lasagne.layers.get_output(network, deterministic=True)
+
+	predict = theano.function([input_var], prediction)
+
+	return predict
+
+# do_classification_dnn: classification for given feature data
+def do_classification_dnn(feature_data, predict):
+	'''
+	input feature_data
+	return classification results
+	'''
+	decision = predict(feature_data)
+
+
+
+
+
+
+
 
 
 
