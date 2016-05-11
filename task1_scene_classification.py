@@ -635,7 +635,8 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
     # Check that target path exists, create if not
     check_path(model_path)
 
-    for fold in dataset.folds(mode=dataset_evaluation_mode):
+    #for fold in dataset.folds(mode=dataset_evaluation_mode):
+    for fold in [1]:
         current_model_file = get_model_filename(fold=fold, path=model_path)
         if not os.path.isfile(current_model_file) or overwrite:
             # Load normalizer
@@ -784,7 +785,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
             if os.path.isfile(model_filename):
                 model_container = load_data(model_filename)
                 if classifier_method == 'lstm':
-                    predict = lstm.build_model( model_container)
+                    predict = lstm.build_model( model_container['models'])
             else:
                 raise IOError("Model file not found [%s]" % model_filename)
 
@@ -804,7 +805,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
 
                 # Do classification for the block
                 if classifier_method == 'gmm':
-                    current_result = do_classification_gmm(feature_data, model_container)
+                    current_result = do_classification_gmm(feature_data, model_container['models'])
                 elif classifier_method == 'lstm':
                     current_result = lstm.do_classification_lstm(feature_data,predict)
                 elif classifier_method == 'dnn':
@@ -821,46 +822,6 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 for result_item in results:
                     writer.writerow(result_item)
 
-
-def do_classification_lstm(feature_data, model_container):
-    """GMM classification for give feature matrix
-
-    model container format:
-
-    {
-        'normalizer': normalizer class
-        'models' :
-            {
-                'office' : mixture.GMM class
-                'home' : mixture.GMM class
-                ...
-            }
-    }
-
-    Parameters
-    ----------
-    feature_data : numpy.ndarray [shape=(t, feature vector length)]
-        feature matrix
-
-    model_container : dict
-        model container
-
-    Returns
-    -------
-    result : str
-        classification result as scene label
-
-    """
-
-    # Initialize log-likelihood matrix to -inf
-    logls = numpy.empty(len(model_container['models']))
-    logls.fill(-numpy.inf)
-
-    for label_id, label in enumerate(model_container['models']):
-        logls[label_id] = numpy.sum(model_container['models'][label].score(feature_data))
-
-    classification_result_id = numpy.argmax(logls)
-    return model_container['models'].keys()[classification_result_id]
 
 def do_classification_gmm(feature_data, model_container):
     """GMM classification for give feature matrix

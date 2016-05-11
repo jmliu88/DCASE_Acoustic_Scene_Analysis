@@ -4,6 +4,13 @@ import theano.tensor as T
 import numpy as np
 import time
 
+from src.ui import *
+from src.general import *
+from src.files import *
+
+from src.features import *
+from src.dataset import *
+from src.evaluation import *
 import batch
 
 def framewise_onehot(y, length=1000):
@@ -128,12 +135,13 @@ def do_train_lstm(data, data_val, **classifier_parameters):
 
     err, cost_test = calc_error(data_val)
     epoch = 0
+    no_best = 1
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
     # TO REMOVE
     #model_params.append(lasagne.layers.get_all_param_values(nnet))
-    while epoch < 2:
+    while epoch < 1:
 
         start_time = time.time()
         cost_train = 0
@@ -154,6 +162,8 @@ def do_train_lstm(data, data_val, **classifier_parameters):
 
         print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val)
         model_params.append(lasagne.layers.get_all_param_values(nnet))
+        check_path('lstm')
+        save_data('lstm/epoch_{}.autosave'.format(epoch), (classifier_parameters, model_params[best_epoch]))
         #savename = os.path.join(modelDir,'epoch_{}.npz'.format(epoch))
         #files.save_model(savename,structureDic,lasagne.layers.get_all_param_values(nnet))
         is_better = False
@@ -174,7 +184,7 @@ def build_model(params):
     target_output = T.tensor3('target_output')
 
     nnet,layers = build(input_var, mask, **params[0])
-    lasagne.layers.set_all_params(nnet,params[1])
+    lasagne.layers.set_all_param_values(nnet,params[1])
 
     pred_fun = lasagne.layers.get_output( nnet, deterministic=True)
     predict = theano.function( [input_var, mask], pred_fun)
