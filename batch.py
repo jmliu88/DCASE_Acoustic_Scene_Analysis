@@ -71,9 +71,9 @@ class Batch():
         #pdb.set_trace()
         index = self.index
         batchsize = min(self.batchsize, len(self.index))
-        x = np.zeros(shape=(batchsize,self.seg_window,self.data.values()[0].shape[1]))
-        y = np.zeros(shape=(batchsize,1))
-        m = np.ones(shape=(batchsize,self.seg_window))
+        x = np.zeros(shape=(batchsize,self.seg_window,self.data.values()[0].shape[1]),dtype='float32')
+        y = np.zeros(shape=(batchsize,1),dtype='float32')
+        m = np.ones(shape=(batchsize,self.seg_window),dtype='float32')
         for i in range(batchsize):
             k,st,en = self.seg[index[i]]
             x[i] = self.data[k][st:en]
@@ -95,6 +95,20 @@ class Batch():
             raise StopIteration
         else:
             return self.get_batch()
+def make_batch(feature_data, size=1000, hop=100):
+    length = feature_data.shape[0]
+    if length>size:
+        n_seg = (length-size)/hop
+        x = np.zeros(shape=(n_seg, size,feature_data.shape[1]),dtype='float32')
+        m = np.ones(shape=(n_seg, size),dtype='float32')
+        for i in range(0,n_seg):
+            x[i] = feature_data[i*hop:i*hop+size]
+    else:
+        x = np.lib.pad(feature_data,((0,size-length),(0,0)), 'constant', constant_values = 0)
+        x = np.expand_dims(x,axis=0)
+        m = np.zeros(shape=(1,size))
+        m[:,:length] = 1
+    return x,m
 if __name__ == '__main__':
     label2index('a')
     pass

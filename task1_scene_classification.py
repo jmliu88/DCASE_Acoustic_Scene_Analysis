@@ -635,8 +635,8 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
     # Check that target path exists, create if not
     check_path(model_path)
 
-    #for fold in dataset.folds(mode=dataset_evaluation_mode):
-    for fold in [1]:
+    for fold in dataset.folds(mode=dataset_evaluation_mode):
+    #for fold in [1]:
         current_model_file = get_model_filename(fold=fold, path=model_path)
         if not os.path.isfile(current_model_file) or overwrite:
             # Load normalizer

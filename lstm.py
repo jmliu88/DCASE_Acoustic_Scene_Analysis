@@ -192,7 +192,10 @@ def build_model(params):
     return predict
 
 
-def do_classification_lstm(feature_data):
-    decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
-    pred_label = np.argmax(np.sum(decision,axis=1), axis = -1)
+def do_classification_lstm(feature_data, predict):
+    length = feature_data.shape[0]
+    x, m = batch.make_batch(feature_data)
+    #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
+    decision = predict(x, m)
+    pred_label = np.argmax(np.sum(decision,axis=(0,1)), axis = -1)
     return batch.labels[pred_label]

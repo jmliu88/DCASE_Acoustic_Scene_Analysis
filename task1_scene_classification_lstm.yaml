@@ -5,7 +5,7 @@ flow:
   initialize: true
   extract_features: true
   feature_normalizer: true
-  train_system: true
+  train_system: false
   test_system: true
   evaluate_system: true
 
@@ -24,7 +24,7 @@ general:
 path:
   data: data/
 
-  base: system/baseline_dcase2016_task1/
+  base: system/baseline_dcase2016_task1_lstm/
   features: features/
   feature_normalizers: feature_normalizers/
   models: acoustic_models/
