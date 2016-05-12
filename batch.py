@@ -96,6 +96,8 @@ class Batch():
         else:
             return self.get_batch()
 def make_batch(feature_data, size=1000, hop=100):
+    ''' Split feature_data into batches with fixed length (size).
+    '''
     length = feature_data.shape[0]
     if length>size:
         n_seg = (length-size)/hop
