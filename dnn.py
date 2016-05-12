@@ -3,24 +3,20 @@
 #
 # dnn classifier
 
-'''
 import numpy
 import theano
 import theano.tensor as T
 import lasagne
 
-feature_data:  array-(1501,60)
-data['beach']: array-(*   ,60)
 
-'''
 # create neural network
-def build_dnn(feature_data, depth=3, width = 1024, drop_input=.2, drop_hidden=.5):
+def build_dnn(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hidden=.5, feat_dim=60):
 	# feature_data: numpy.ndarray [shape=(t, feature vector length)]
 	# depth: number of hidden layers
 	# width: number of units in each hidden layer
-	feature_length = feature_data.shape[1]   # feature_data shape???
-	network = lasagne.layers.InputLayer(shape=(None,1,feature_length),
-										input_var = data)
+	#feature_length = feature_data.shape[1]    # feature_data shape???
+	network = lasagne.layers.InputLayer(shape=(None,1,feat_dim),
+										input_var = input_var)
 	if drop_input:
 		network = lasagne.layers.dropout(network, p=drop_input)
 
@@ -35,7 +31,7 @@ def build_dnn(feature_data, depth=3, width = 1024, drop_input=.2, drop_hidden=.5
 
 	# output layer
 	softmax = lasagne.nonlinearities.softmax
-	network = lasagne.layers.DenseLayer(network, 15, nonlinearity=softmax)
+	network = lasagne.layers.DenseLayer(network, num_class, nonlinearity=softmax)
 	return network
     
 
@@ -53,17 +49,16 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 
 # train dnn 
-def do_train(data, num_epochs=10):
+def do_train(data, data_var, **classifier_parameters):
 	'''
-	return 
+	return ??
 	'''
+	num_epochs = 100
     # prepare theano variables for inputs and targets
 	input_var = T.tensor3('inputs')
-	target_var = T.ivector('targets')
+	target_var = T.ivector('targets')  # ??
 	
-	network = build_dnn(input_var,
-						int(depth),	int(width),
-						float(drop_in),	float(drop_hid))
+	network = build_dnn(input_var,**classifier_parameters)
 
 	# create a loss expression for training
 	prediction = lasagne.layers.get_output(network)
@@ -82,8 +77,6 @@ def do_train(data, num_epochs=10):
 	test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_val)
 	test_loss = test_loss.mean()
 
-	# return test_prediction and target, delete code for err & acc
-	
 	
 	# create an expression for classification accuracy
 	test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),dtype=theano.config.floatx)
@@ -96,6 +89,10 @@ def do_train(data, num_epochs=10):
 
 	# training loop
 	print("Starting training...")
+	X_train=
+	y_train=
+	X_val =
+	y_val =
 	# We iterate over epochs:
 	for epoch in range(num_epochs):
 		# In each epoch, we do a full pass over the training data:
@@ -164,10 +161,8 @@ def build_model(model_params):
 	input_var = T.tensor3('inputs')
 	target_var = T.ivector('targets')
 	
-	network = build_dnn(input_var,
-						int(depth),	int(width),
-						float(drop_in),	float(drop_hid))
-	lasagne.layers.set_all_params(network,model_params)
+	network = build_dnn(input_var, **model_params[0])
+	lasagne.layers.set_all_params(network,model_params[1])
 
 	prediction = lasagne.layers.get_output(network, deterministic=True)
 
@@ -181,9 +176,10 @@ def do_classification_dnn(feature_data, predict):
 	input feature_data
 	return classification results
 	'''
-	decision = predict(feature_data)
-
-
+	# ???
+	decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'),np.ones(shape=(1,feature_data.shape[0])))
+	pred_label = np.argmax(np.sum(decision,axis=1), axis= -1)
+	return pred_label
 
 
 
