@@ -135,13 +135,13 @@ def do_train_lstm(data, data_val, **classifier_parameters):
 
     err, cost_test = calc_error(data_val)
     epoch = 0
-    no_best = 1
+    no_best = 10
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
     # TO REMOVE
     #model_params.append(lasagne.layers.get_all_param_values(nnet))
-    while epoch < 1:
+    while epoch < 100:
 
         start_time = time.time()
         cost_train = 0
