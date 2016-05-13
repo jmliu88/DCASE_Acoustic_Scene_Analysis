@@ -90,7 +90,7 @@ def cost_prev(output,target_output,mask):
                 target_output*T.log(output))/(mask.shape[0])
 def cost(output,target_output,mask):
     return -T.sum(target_output*T.log(output))/(output.shape[0])
-def do_train_lstm(data, data_val, **classifier_parameters):
+def do_train_lstm(data, data_val, data_test, **classifier_parameters):
     ''' input
         -------
         data: {label:np.array(features)}
@@ -133,7 +133,7 @@ def do_train_lstm(data, data_val, **classifier_parameters):
 #theano.config.warn_float64='pdb'
     print "start training"
 
-    err, cost_test = calc_error(data_val,predict)
+    #err, cost_test = calc_error(data_val,predict)
     epoch = 0
     no_best = 10
     best_cost = np.inf
@@ -155,12 +155,15 @@ def do_train_lstm(data, data_val, **classifier_parameters):
             assert(not np.any(np.isnan(x)))
             cost_train+= train(x, y, m) *x .shape[0]#*x .shape[1]
             assert(not np.isnan(cost_train))
-            err_val, cost_val = calc_error(data_val,predict)
+        cost_train = cost_train/ len(batch_maker.index_bkup)
+        err_val, cost_val = calc_error(data_val,predict)
+
+        err_test, cost_test = calc_error(data_test,predict)
             #cost_val, err_val = 0, 0
         #pdb.set_trace()
         end_time = time.time()
 
-        print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val)
+        print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
         model_params.append(lasagne.layers.get_all_param_values(nnet))
         check_path('lstm')
         save_data('lstm/epoch_{}.autosave'.format(epoch), (classifier_parameters, model_params[best_epoch]))

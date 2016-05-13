@@ -83,6 +83,9 @@ class Dataset(object):
         # Validating meta data for folds, added by James
         self.evaluation_data_val = {}
 
+        #  Evaluation meta data for folds, added by James
+        self.evaluation_data_eval = {}
+
         # Testing meta data for folds
         self.evaluation_data_test = {}
 
@@ -811,6 +814,70 @@ class Dataset(object):
 
         return self.evaluation_data_test[fold]
 
+    def evaluate(self, fold=0):
+        """List of testing items.
+
+        Parameters
+        ----------
+        fold : int > 0 [scalar]
+            Fold id, if zero all meta data is returned.
+            (Default value=0)
+
+        Returns
+        -------
+        list : list of dicts
+            List containing all meta data assigned to testing set for given fold.
+
+        """
+
+
+        if fold not in self.evaluation_data_eval:
+            self.evaluation_data_eval[fold] = []
+            if fold > 0:
+                with open(os.path.join(self.evaluation_setup_path, 'fold' + str(fold) + '_evaluate.txt'), 'rt') as f:
+                    for row in csv.reader(f, delimiter='\t'):
+                        if len(row) == 2:
+                            # Scene meta
+                            self.evaluation_data_eval[fold].append({
+                                'file': self.relative_to_absolute_path(row[0]),
+                                'scene_label': row[1]
+                            })
+                        elif len(row) == 4:
+                            # Audio tagging meta
+                            self.evaluation_data_eval[fold].append({
+                                'file': self.relative_to_absolute_path(row[0]),
+                                'scene_label': row[1],
+                                'tag_string': row[2],
+                                'tags': row[3].split(';')
+                            })
+                        elif len(row) == 5:
+                            # Event meta
+                            self.evaluation_data_eval[fold].append({
+                                'file': self.relative_to_absolute_path(row[0]),
+                                'scene_label': row[1],
+                                'event_onset': float(row[2]),
+                                'event_offset': float(row[3]),
+                                'event_label': row[4]
+                            })
+            else:
+                data = []
+                for item in self.meta:
+                    if 'event_label' in item:
+                        data.append({'file': self.relative_to_absolute_path(item['file']),
+                                     'scene_label': item['scene_label'],
+                                     'event_onset': item['event_onset'],
+                                     'event_offset': item['event_offset'],
+                                     'event_label': item['event_label'],
+                                     })
+                    else:
+                        data.append({'file': self.relative_to_absolute_path(item['file']),
+                                     'scene_label': item['scene_label']
+                                     })
+                self.evaluation_data_eval[0] = data
+
+        return self.evaluation_data_eval[fold]
+
+
     def folds(self, mode='folds'):
         """List of fold ids
 
@@ -1198,7 +1265,7 @@ class TUTSoundEvents_2016_DevelopmentSet(Dataset):
                 meta_file_handle.close()
 
     def train(self, fold=0, scene_label=None):
-        pdb.set_trace()
+        #pdb.set_trace()
         if fold not in self.evaluation_data_train:
             self.evaluation_data_train[fold] = {}
             for scene_label_ in self.scene_labels:

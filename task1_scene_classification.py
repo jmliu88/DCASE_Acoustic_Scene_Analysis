@@ -17,6 +17,8 @@ import argparse
 import textwrap
 
 from sklearn import mixture
+import inspect
+from functools import partial
 import pdb
 
 __version_info__ = ('1', '0', '0')
@@ -134,8 +136,18 @@ def main(argv):
     if params['flow']['train_system']:
         section_header('System training')
 
-        do_system_training(dataset=dataset,
-        #do_system_training_parallel(dataset=dataset,
+        if params['flow']['train_system_parallel']:
+            do_system_training_parallel(dataset=dataset,
+                           model_path=params['path']['models'],
+                           feature_normalizer_path=params['path']['feature_normalizers'],
+                           feature_path=params['path']['features'],
+                           classifier_params=params['classifier']['parameters'],
+                           classifier_method=params['classifier']['method'],
+                           dataset_evaluation_mode=dataset_evaluation_mode,
+                           overwrite=params['classifier']['overwrite']
+                           )
+        else:
+            do_system_training(dataset=dataset,
                            model_path=params['path']['models'],
                            feature_normalizer_path=params['path']['feature_normalizers'],
                            feature_path=params['path']['features'],
@@ -634,89 +646,13 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
 
     # Check that target path exists, create if not
     check_path(model_path)
+    frame = inspect.currentframe()
+    args, _, _, values = inspect.getargvalues(frame)
 
+    # Training models on the folds
     for fold in dataset.folds(mode=dataset_evaluation_mode):
-    #for fold in [1]:
-        current_model_file = get_model_filename(fold=fold, path=model_path)
-        if not os.path.isfile(current_model_file) or overwrite:
-            # Load normalizer
-            feature_normalizer_filename = get_feature_normalizer_filename(fold=fold, path=feature_normalizer_path)
-            if os.path.isfile(feature_normalizer_filename):
-                normalizer = load_data(feature_normalizer_filename)
-            else:
-                raise IOError("Feature normalizer not found [%s]" % feature_normalizer_filename)
-
-            # Initialize model container
-            model_container = {'normalizer': normalizer, 'models': {}}
-
-            # Collect training examples
-            file_count = len(dataset.train(fold))
-            data = {}
-            for item_id, item in enumerate(dataset.train(fold)):
-                progress(title_text='Collecting data',
-                         fold=fold,
-                         percentage=(float(item_id) / file_count),
-                         note=os.path.split(item['file'])[1])
-
-                # Load features
-                feature_filename = get_feature_filename(audio_file=item['file'], path=feature_path)
-                if os.path.isfile(feature_filename):
-                    feature_data = load_data(feature_filename)['feat']
-                else:
-                    raise IOError("Features not found [%s]" % (item['file']))
-
-                # Scale features
-                feature_data = model_container['normalizer'].normalize(feature_data)
-
-                # Store features per class label
-                if item['scene_label'] not in data:
-                    data[item['scene_label']] = feature_data
-                else:
-                    data[item['scene_label']] = numpy.vstack((data[item['scene_label']], feature_data))
-
-            file_count = len(dataset.val(fold))
-            data_val = {}
-            for item_id, item in enumerate(dataset.val(fold)):
-                progress(title_text='Collecting data_val',
-                         fold=fold,
-                         percentage=(float(item_id) / file_count),
-                         note=os.path.split(item['file'])[1])
-
-                # Load features
-                feature_filename = get_feature_filename(audio_file=item['file'], path=feature_path)
-                if os.path.isfile(feature_filename):
-                    feature_data = load_data(feature_filename)['feat']
-                else:
-                    raise IOError("Features not found [%s]" % (item['file']))
-
-                # Scale features
-                feature_data = model_container['normalizer'].normalize(feature_data)
-
-                # Store features per class label
-                if item['scene_label'] not in data_val:
-                    data_val[item['scene_label']] = feature_data
-                    #data_val[item['scene_label']] = [feature_data]
-                else:
-                    data_val[item['scene_label']] = numpy.vstack((data_val[item['scene_label']], feature_data))
-                    #data_val[item['scene_label']].append(feature_data)
-            print classifier_params
-            if classifier_method == 'gmm':
-                # Train models for each class
-                for label in data:
-                    progress(title_text='Train models',
-                            fold=fold,
-                            note=label)
-                    model_container['models'][label] = mixture.GMM(**classifier_params).fit(data[label])
-            elif classifier_method == 'lstm':
-                model_container['models'] = lstm.do_train_lstm(data, data_val,**classifier_params)
-                ## add training log
-            elif classifier_method == 'dnn':
-                model_container['models'] = dnn.do_train(data, data_val,**classifier_params)
-            else:
-                raise ValueError("Unknown classifier method ["+classifier_method+"]")
-
-            # Save models
-            save_data(current_model_file, model_container)
+        do_fold_train(fold=fold, logging=None, **{k:values[k] for k in args})
+        #do_fold_train_partial({'fold':fold, 'device':'gpu%d'%0, 'logging':None})
 
 def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, classifier_params,
                        dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=False, fold=2, device='gpu3', logging='sdflkdsajgh.txt'):
@@ -725,9 +661,10 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
         import lstm
         import sys
 
-        old_stdout = sys.stdout
-        log_file = open(logging,"w")
-        sys.stdout = log_file
+        if logging is not None:
+            old_stdout = sys.stdout
+            log_file = open(logging,"a")
+            sys.stdout = log_file
         print "fold %d started"%fold
 
         current_model_file = get_model_filename(fold=fold, path=model_path)
@@ -792,6 +729,32 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
                 else:
                     data_val[item['scene_label']] = numpy.vstack((data_val[item['scene_label']], feature_data))
                     #data_val[item['scene_label']].append(feature_data)
+
+            # Collecting evaluation set
+            file_count = len(dataset.evaluate(fold))
+            data_eval = {}
+            for item_id, item in enumerate(dataset.evaluate(fold)):
+                progress(title_text='Collecting data_eval',
+                         fold=fold,
+                         percentage=(float(item_id) / file_count),
+                         note=os.path.split(item['file'])[1])
+
+                # Load features
+                feature_filename = get_feature_filename(audio_file=item['file'], path=feature_path)
+                if os.path.isfile(feature_filename):
+                    feature_data = load_data(feature_filename)['feat']
+                else:
+                    raise IOError("Features not found [%s]" % (item['file']))
+
+                # Scale features
+                feature_data = model_container['normalizer'].normalize(feature_data)
+
+                # Store features per class label
+                if item['scene_label'] not in data_eval:
+                    data_eval[item['scene_label']] = feature_data
+                    #data_val[item['scene_label']] = [feature_data]
+                else:
+                    data_eval[item['scene_label']] = numpy.vstack((data_eval[item['scene_label']], feature_data))
             print classifier_params
             if classifier_method == 'gmm':
                 # Train models for each class
@@ -801,7 +764,7 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
                             note=label)
                     model_container['models'][label] = mixture.GMM(**classifier_params).fit(data[label])
             elif classifier_method == 'lstm':
-                model_container['models'] = lstm.do_train_lstm(data, data_val,**classifier_params)
+                model_container['models'] = lstm.do_train_lstm(data, data_val, data_eval, **classifier_params)
                 ## add training log
             elif classifier_method == 'dnn':
                 model_container['models'] = dnn.do_train(data, data_val,**classifier_params)
@@ -810,8 +773,9 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
 
             # Save models
             save_data(current_model_file, model_container)
-        sys.stdout = old_stdout
-        log_file.close()
+        if logging is not None:
+            sys.stdout = old_stdout
+            log_file.close()
 def do_system_training_parallel(dataset, model_path, feature_normalizer_path, feature_path, classifier_params,
                        dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=False):
     """System training
@@ -871,9 +835,7 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
         Feature file not found.
 
     """
-    import inspect
     from multiprocessing import Process
-    from functools import partial
 
     #pdb.set_trace()
     if classifier_method not in ['gmm','lstm','dnn']:
@@ -893,8 +855,8 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
         jobs.append(p)
         p.start()
         print 'fold%d started.'%fold
-    for fold in dataset.folds(mode=dataset_evaluation_mode):
-        jobs[fold].join()
+    for i_thread in jobs:
+        i_thead.join()
 
 
 def do_system_testing(dataset, result_path, feature_path, model_path, feature_params,
