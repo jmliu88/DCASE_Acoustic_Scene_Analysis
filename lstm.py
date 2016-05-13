@@ -90,7 +90,7 @@ def cost_prev(output,target_output,mask):
                 target_output*T.log(output))/(mask.shape[0])
 def cost(output,target_output,mask):
     return -T.sum(target_output*T.log(output))/(output.shape[0])
-def do_train_lstm(data, data_val, data_test, **classifier_parameters):
+def do_train(data, data_val, data_test, **classifier_parameters):
     ''' input
         -------
         data: {label:np.array(features)}
@@ -125,9 +125,8 @@ def do_train_lstm(data, data_val, data_test, **classifier_parameters):
     pred_fun = lasagne.layers.get_output(
             nnet, deterministic=True)
     train = theano.function([input_var, target_output, mask],loss_train , updates=updates)
-    compute_cost = theano.function([input_var, target_output, mask],loss_eval)
-    predict = theano.function(
-        [input_var, mask], pred_fun)
+    #compute_cost = theano.function([input_var, target_output, mask],loss_eval)
+    predict = theano.function( [input_var, mask], pred_fun)
 
 
 #theano.config.warn_float64='pdb'

@@ -2,201 +2,170 @@
 # -*- coding: utf-8 -*-
 #
 # dnn classifier
-
-import numpy
+import lasagne
 import theano
 import theano.tensor as T
-import lasagne
+import numpy as np
+import time
 
+from src.ui import *
+from src.general import *
+from src.files import *
+
+from src.features import *
+from src.dataset import *
+from src.evaluation import *
+import batch
+import pdb
+
+def onehot(y):
+    y_hat = np.zeros(shape = (y.shape[0], 15),dtype='int32')
+    for i in range(y.shape[0]):
+        y_hat[i,int(y[i])] = 1
+    return y_hat
+def calc_error(data_test, predict):
+    ''' return error, cost on that set'''
+
+    b = batch.Batch(data_test, max_batchsize=5000, seg_window=15, seg_hop=5)
+    err = 0
+    cost_val=0
+    for (x,y_lab,_) in b:
+        decision=predict(x.reshape((x.shape[0],-1)).astype('float32'))
+        pred_label= np.argmax(decision,axis=-1)
+        y = onehot(y_lab)
+
+        cost_val += -np.sum(y*np.log(decision))
+        #pdb.set_trace()
+        err += np.sum( (pred_label!= y_lab ))
+    err = err/len(b.index_bkup)
+    cost_val = cost_val /len(b.index_bkup)
+    return err , cost_val
 
 # create neural network
-def build_dnn(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hidden=.5, feat_dim=60):
-	# feature_data: numpy.ndarray [shape=(t, feature vector length)]
-	# depth: number of hidden layers
-	# width: number of units in each hidden layer
-	#feature_length = feature_data.shape[1]    # feature_data shape???
-	network = lasagne.layers.InputLayer(shape=(None,1,feat_dim),
-										input_var = input_var)
-	if drop_input:
-		network = lasagne.layers.dropout(network, p=drop_input)
+def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hidden=.5, feat_dim=60):
+    # feature_data: numpy.ndarray [shape=(t, feature vector length)]
+    # depth: number of hidden layers
+    # width: number of units in each hidden layer
+    #feature_length = feature_data.shape[1]    # feature_data shape???
+    network = lasagne.layers.InputLayer(shape=(None,feat_dim),
+                                        input_var = input_var)
+    if drop_input:
+        network = lasagne.layers.dropout(network, p=drop_input)
 
-	# create hidden layers and dropout
-	nonlin = lasagne.nonlinearities.rectify
-	for _ in range(depth):
-		network = lasagne.layers.DenseLayer(network,
-											width,
-											nonlinearity=nonlin)
-		if drop_hidden:
-			network = lasagne.layers.dropout(network, p=drop_hidden)
+    # create hidden layers and dropout
+    nonlin = lasagne.nonlinearities.rectify
+    for _ in range(depth):
+        network = lasagne.layers.DenseLayer(network,
+                                            width,
+                                            nonlinearity=nonlin)
+        if drop_hidden:
+            network = lasagne.layers.dropout(network, p=drop_hidden)
 
-	# output layer
-	softmax = lasagne.nonlinearities.softmax
-	network = lasagne.layers.DenseLayer(network, num_class, nonlinearity=softmax)
-	return network
-    
+    # output layer
+    softmax = lasagne.nonlinearities.softmax
+    network = lasagne.layers.DenseLayer(network, num_class, nonlinearity=softmax)
+    return network
 
-def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
-	assert len(inputs) = len(targets)
-	if shuffle:
-		indices = np.arange(len(inputs))
-		np.random.shuffle(indices)
-	for start_idx in range(0, len(inputs)-batchsize+1, batchsize):
-		if shuffle:
-			excerpt = indices[start_idx:start_idx + batchsize]
-		else:
-			excerpt = slice(start_idx, start_idx + batchsize)
-		yield inputs[excerpt], targets[excerpt]
+# train dnn
+def do_train(data, data_val, data_test,  **classifier_parameters):
+    '''
+    return ??
+    '''
 
-
-# train dnn 
-def do_train(data, data_var, **classifier_parameters):
-	'''
-	return ??
-	'''
-	num_epochs = 100
+    batch_maker = batch.Batch(data, isShuffle = True, seg_window=15, seg_hop=5)
+    num_epochs = 10000
     # prepare theano variables for inputs and targets
-	input_var = T.tensor3('inputs')
-	target_var = T.ivector('targets')  # ??
-	
-	network = build_dnn(input_var,**classifier_parameters)
+    input_var = T.matrix('inputs')
+    target_var = T.imatrix('targets')  # ??
 
-	# create a loss expression for training
-	prediction = lasagne.layers.get_output(network)
-	loss = lasagne.objectives.categorical_crossentropy(prediction,target_var)
-	loss = loss.mean()
-	# could add some weight decay here
+    network = build(input_var,**classifier_parameters)
 
-	# create update expressions for training: SGD with momentum
-	params = lasagne.layers.get_all_params(network, trainable=True)
-	updates = lasagne.updates.nesterov_momentum(
-		loss, params, learning_rate=0.01, momentum=0.9)
+    # create a loss expression for training
+    prediction = lasagne.layers.get_output(network)
+    loss = lasagne.objectives.categorical_crossentropy(prediction,target_var)
+    loss = loss.mean()
 
-	# create a loss expression for validation/testing
-	# 'deterministic' disable dropout layers
-	test_prediction = lasagne.layers.get_output(network, deterministic=True)
-	test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_val)
-	test_loss = test_loss.mean()
+    # create update expressions for training: SGD with momentum
+    params = lasagne.layers.get_all_params(network, trainable=True)
+    updates = lasagne.updates.nesterov_momentum(
+        loss, params, learning_rate=0.01, momentum=0.9)
 
-	
-	# create an expression for classification accuracy
-	test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),dtype=theano.config.floatx)
+    train = theano.function([input_var, target_var],loss , updates=updates)
+    # create a loss expression for validation/testing
+    # 'deterministic' disable dropout layers
+    test_prediction = lasagne.layers.get_output(network, deterministic=True)
+    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var)
+    test_loss = test_loss.mean()
+    predict = theano.function( [input_var], lasagne.layers.get_output(network, deterministic=True))
 
-	# compile a function performing a training step on a mini-batch
-	train_fn = theano.function([input_var, target_var], loss, updates=updates)
+    # training loop
+    print("Starting training...")
+    epoch = 0
+    no_best = 70
+    best_cost = np.inf
+    best_epoch = epoch
+    model_params = []
+    # TO REMOVE
+    #model_params.append(lasagne.layers.get_all_param_values(nnet))
+    while epoch < num_epochs:
 
-	# compile a function computing the validation loss and accuracy
-	val_fn = theano.function([input_var, target_var], [test_loss, test_acc])
+        start_time = time.time()
+        cost_train = 0
+        for _, (x ,y ,_) in enumerate(batch_maker):
+            x =x.reshape((x.shape[0], -1))
+            y=onehot(y)
 
-	# training loop
-	print("Starting training...")
-	X_train=
-	y_train=
-	X_val =
-	y_val =
-	# We iterate over epochs:
-	for epoch in range(num_epochs):
-		# In each epoch, we do a full pass over the training data:
-		train_err = 0
-		train_batches = 0
-		start_time = time.time()
-		for batch in iterate_minibatches(X_train, y_train, 500, shuffle=True):
-			inputs, targets = batch
-			train_err += train_fn(inputs, targets)
-			train_batches += 1
+            assert(not np.any(np.isnan(x)))
+            cost_train+= train(x, y) *x .shape[0]#*x .shape[1]
+            assert(not np.isnan(cost_train))
+        cost_train = cost_train/ len(batch_maker.index_bkup)
+        err_val, cost_val = calc_error(data_val,predict)
 
-		# And a full pass over the validation data:
-		val_err = 0
-		val_acc = 0
-		val_batches = 0
-		for batch in iterate_minibatches(X_val, y_val, 500, shuffle=False):
-			inputs, targets = batch
-			err, acc = val_fn(inputs, targets)
-			val_err += err
-			val_acc += acc
-			val_batches += 1
-		
-		# Then we print the results for this epoch:
-		print("Epoch {} of {} took {:.3f}s".format(
-			epoch + 1, num_epochs, time.time() - start_time))
-		print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-		print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
-		print("  validation accuracy:\t\t{:.2f} %".format(
-			val_acc / val_batches * 100))
+        err_test, cost_test = calc_error(data_test,predict)
+            #cost_val, err_val = 0, 0
+        #pdb.set_trace()
+        end_time = time.time()
 
-	'''
-	# After training, we compute and print the test error:
-	test_err = 0
-	test_acc = 0
-	test_batches = 0
-	for batch in iterate_minibatches(X_test, y_test, 500, shuffle=False):
-		inputs, targets = batch
-		err, acc = val_fn(inputs, targets)
-		test_err += err
-		test_acc += acc
-		test_batches += 1
-	print("Final results:")
-	print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
-	print("  test accuracy:\t\t{:.2f} %".format(
-			test_acc / test_batches * 100))
-	'''
-
-    model_params = lasagne.layers.get_all_param_values(network)
-    return model_params
-	
-
-'''
-def load_feature_data():
-	print("Loading features...")
-	pass
-	return data
+        print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
+        model_params.append(lasagne.layers.get_all_param_values(network))
+        check_path('dnn')
+        save_data('dnn/epoch_{}.autosave'.format(epoch), (classifier_parameters, model_params[best_epoch]))
+        #savename = os.path.join(modelDir,'epoch_{}.npz'.format(epoch))
+        #files.save_model(savename,structureDic,lasagne.layers.get_all_param_values(nnet))
+        is_better = False
+        if cost_val < best_cost:
+            best_cost =cost_val
+            best_epoch = epoch
+            is_better = True
+        if epoch - best_epoch >= no_best:
+            ## Early stoping
+            break
+        epoch += 1
+    return (classifier_parameters, model_params[best_epoch])
 
 
-
-if __name__ == '__main__':
-	data = load_feature_data()
-	
-'''
 
 def build_model(model_params):
-	input_var = T.tensor3('inputs')
-	target_var = T.ivector('targets')
-	
-	network = build_dnn(input_var, **model_params[0])
-	lasagne.layers.set_all_params(network,model_params[1])
+    input_var = T.tensor3('inputs')
+    target_var = T.ivector('targets')
 
-	prediction = lasagne.layers.get_output(network, deterministic=True)
+    network = build(input_var, **model_params[0])
+    lasagne.layers.set_all_params(network,model_params[1])
 
-	predict = theano.function([input_var], prediction)
+    prediction = lasagne.layers.get_output(network, deterministic=True)
 
-	return predict
+    predict = theano.function([input_var], prediction)
+
+    return predict
 
 # do_classification_dnn: classification for given feature data
 def do_classification_dnn(feature_data, predict):
-	'''
-	input feature_data
-	return classification results
-	'''
-	# ???
-	decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'),np.ones(shape=(1,feature_data.shape[0])))
-	pred_label = np.argmax(np.sum(decision,axis=1), axis= -1)
-	return pred_label
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    '''
+    input feature_data
+    return classification results
+    '''
+    # ???
+    x, _ = batch.make_batch(feature_data,15,5)
+    decision = predict(x.reshape((x.shape[0],-1)))
+    pred_label = np.argmax(np.sum(decision,axis=0), axis = -1)
+    return batch.labels[pred_label]
