@@ -856,7 +856,7 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
         p.start()
         print 'fold%d started.'%fold
     for i_thread in jobs:
-        i_thead.join()
+        i_thread.join()
 
 
 def do_system_testing(dataset, result_path, feature_path, model_path, feature_params,
