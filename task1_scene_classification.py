@@ -134,8 +134,8 @@ def main(argv):
     if params['flow']['train_system']:
         section_header('System training')
 
-        #do_system_training(dataset=dataset,
-        do_system_training_parallel(dataset=dataset,
+        do_system_training(dataset=dataset,
+        #do_system_training_parallel(dataset=dataset,
                            model_path=params['path']['models'],
                            feature_normalizer_path=params['path']['feature_normalizers'],
                            feature_path=params['path']['features'],
@@ -162,7 +162,7 @@ def main(argv):
                               feature_params=params['features'],
                               dataset_evaluation_mode=dataset_evaluation_mode,
                               classifier_method=params['classifier']['method'],
-                              overwrite=params['general']['overwrite']
+                              overwrite=True
                               )
 
             foot()
@@ -626,6 +626,7 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
         Feature file not found.
 
     """
+    import lstm
 
     #pdb.set_trace()
     if classifier_method not in ['gmm','lstm','dnn']:
@@ -897,7 +898,7 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
 
 
 def do_system_testing(dataset, result_path, feature_path, model_path, feature_params,
-                      dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=False):
+                      dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=True):
     """System testing.
 
     If extracted features are not found from disk, they are extracted but not saved.
@@ -945,6 +946,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
         Audio file not found.
 
     """
+    import lstm
 
     if classifier_method not in  ['gmm','lstm','dnn']:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
@@ -976,9 +978,28 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 # Load features
                 feature_filename = get_feature_filename(audio_file=item['file'], path=feature_path)
 
+                #pdb.set_trace()
                 if os.path.isfile(feature_filename):
+                #if False:
                     feature_data = load_data(feature_filename)['feat']
-                else:model_container['normalizer'].normalize(feature_data)
+                else: # Load audio
+                    if os.path.isfile(dataset.relative_to_absolute_path(item['file'])):
+                        y, fs = load_audio(filename=dataset.relative_to_absolute_path(item['file']), mono=True, fs=feature_params['fs'])
+                    else:
+                        raise IOError("Audio file not found [%s]" % (item['file']))
+
+                    feature_data = feature_extraction(y=y,
+                                                      fs=fs,
+                                                      include_mfcc0=feature_params['include_mfcc0'],
+                                                      include_delta=feature_params['include_delta'],
+                                                      include_acceleration=feature_params['include_acceleration'],
+                                                      mfcc_params=feature_params['mfcc'],
+                                                      delta_params=feature_params['mfcc_delta'],
+                                                      acceleration_params=feature_params['mfcc_acceleration'],
+                                                      statistics=False)['feat']
+
+                # Normalize features
+                feature_data = model_container['normalizer'].normalize(feature_data)
 
                 # Do classification for the block
                 if classifier_method == 'gmm':
