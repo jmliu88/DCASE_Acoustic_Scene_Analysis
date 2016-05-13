@@ -24,7 +24,7 @@ general:
 path:
   data: data/
 
-  base: system/baseline_dcase2016_task1_lstm/
+  base: system/baseline_dcase2016_task1_lstm_parrel/
   features: features/
   feature_normalizers: feature_normalizers/
   models: acoustic_models/
