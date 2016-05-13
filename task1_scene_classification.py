@@ -24,6 +24,7 @@ import pdb
 __version_info__ = ('1', '0', '0')
 __version__ = '.'.join(__version_info__)
 
+model_bank = ['gmm','lstm','dnn','cnn', 'lstm_average', 'lstm_attention', 'ff_attention']
 
 def main(argv):
     numpy.random.seed(123456)  # let's make randomization predictable
@@ -638,10 +639,9 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
         Feature file not found.
 
     """
-    import lstm
 
     #pdb.set_trace()
-    if classifier_method not in ['gmm','lstm','dnn']:
+    if classifier_method not in model_bank:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
     # Check that target path exists, create if not
@@ -659,6 +659,7 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
         import theano.sandbox.cuda
         theano.sandbox.cuda.use(device)
         import lstm
+        import dnn
         import sys
 
         if logging is not None:
@@ -764,10 +765,12 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
                             note=label)
                     model_container['models'][label] = mixture.GMM(**classifier_params).fit(data[label])
             elif classifier_method == 'lstm':
-                model_container['models'] = lstm.do_train_lstm(data, data_val, data_eval, **classifier_params)
+                model_container['models'] = lstm.do_train(data, data_val, data_eval, **classifier_params)
                 ## add training log
             elif classifier_method == 'dnn':
-                model_container['models'] = dnn.do_train(data, data_val,**classifier_params)
+                model_container['models'] = dnn.do_train(data, data_val, data_eval, **classifier_params)
+            elif classifier_method == 'cnn':
+                model_container['models'] = cnn.do_train(data, data_val, data_eval, **classifier_params)
             else:
                 raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
@@ -838,7 +841,7 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
     from multiprocessing import Process
 
     #pdb.set_trace()
-    if classifier_method not in ['gmm','lstm','dnn']:
+    if classifier_method not in model_bank:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
     # Check that target path exists, create if not
@@ -909,8 +912,9 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
 
     """
     import lstm
+    import dnn
 
-    if classifier_method not in  ['gmm','lstm','dnn']:
+    if classifier_method not in  model_bank:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
     # Check that target path exists, create if not
@@ -967,9 +971,11 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 if classifier_method == 'gmm':
                     current_result = do_classification_gmm(feature_data, model_container['models'])
                 elif classifier_method == 'lstm':
-                    current_result = lstm.do_classification_lstm(feature_data,predict)
+                    current_result = lstm.do_classification(feature_data,predict)
                 elif classifier_method == 'dnn':
-                    current_result = dnn.do_classification_dnn(data,**classifier_params)
+                    current_result = dnn.do_classification(data,**classifier_params)
+                elif classifier_method == 'cnn':
+                    current_result = cnn.do_classification(data,**classifier_params)
                 else:
                     raise ValueError("Unknown classifier method ["+classifier_method+"]")
 

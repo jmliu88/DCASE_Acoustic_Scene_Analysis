@@ -8,6 +8,7 @@ flow:
   train_system: true
   test_system: true
   evaluate_system: true
+  train_system_parallel: false
 
 # ==========================================================
 # General
@@ -24,7 +25,7 @@ general:
 path:
   data: data/
 
-  base: system/baseline_dcase2016_task1/
+  base: system/baseline_dcase2016_task1_dnn_testrun/
   features: features/
   feature_normalizers: feature_normalizers/
   models: acoustic_models/
@@ -68,10 +69,10 @@ classifier:
   overwrite: true
 
 classifier_parameters:
-  lstm:
+  dnn:
     depth: 3
     width: 1024
     num_class: 15
-	drop_input: 0.2
+    drop_input: 0.2
     drop_hidden: 0.5
-    feat_dim: 60
+    feat_dim: 900
