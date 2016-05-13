@@ -29,8 +29,9 @@ def calc_error(data_test, predict):
     b = batch.Batch(data_test, max_batchsize=5000, seg_window=15, seg_hop=5)
     err = 0
     cost_val=0
+    eps = 1e-50
     for (x,y_lab,_) in b:
-        decision=predict(x.reshape((x.shape[0],-1)).astype('float32'))
+        decision=predict(x.reshape((x.shape[0],-1)).astype('float32')) + eps
         pred_label= np.argmax(decision,axis=-1)
         y = onehot(y_lab)
 
