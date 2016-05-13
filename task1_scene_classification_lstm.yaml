@@ -70,7 +70,7 @@ classifier:
 
 classifier_parameters:
   lstm:
-    n_layers: 3
+    n_layers: 2
     n_hidden_blstm: 126
     dropout_rate_blstm: 0.2
     dropout_rate_dense: 0.5
