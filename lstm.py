@@ -19,6 +19,25 @@ def framewise_onehot(y, length=1000):
         y_hat[i,:,int(y[i])] = 1
     return y_hat
 
+def calc_error(data_test, predict):
+    ''' return error, cost on that set'''
+
+    b = batch.Batch(data_test, max_batchsize=500)
+    err = 0
+    cost_val=0
+    for (x,y,m) in b:
+        y = framewise_onehot(y,x.shape[1])
+        decision=predict(x.astype('float32'),m.astype('float32'))
+        pred_label= np.argmax(decision,axis=2)
+        y_lab = np.argmax(y,axis=2)
+
+        cost_val += -np.sum(y*np.log(decision))
+        #pdb.set_trace()
+        err += np.sum( (pred_label!= y_lab ))
+    err = err/len(b.index_bkup)
+    cost_val = cost_val /len(b.index_bkup)
+    return err , cost_val
+
 def build(input_var,mask, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, n_hidden_blstm = 125, n_hidden_dense= 256, n_class = 10, max_length = 1000, feat_dim = 60):
 
     l_in = lasagne.layers.InputLayer(
@@ -110,30 +129,11 @@ def do_train_lstm(data, data_val, **classifier_parameters):
     predict = theano.function(
         [input_var, mask], pred_fun)
 
-    def calc_error(data_test):
-        ''' return error, cost on that set'''
-
-        b = batch.Batch(data_test, max_batchsize=500)
-        err = 0
-        cost_val=0
-        for (x,y,m) in b:
-            y = framewise_onehot(y,x.shape[1])
-            decision=predict(x.astype('float32'),m.astype('float32'))
-            pred_label= np.argmax(decision,axis=2)
-            y_lab = np.argmax(y,axis=2)
-            #pdb.set_trace()
-
-            cost_val += -np.sum(y*np.log(decision))
-            #pdb.set_trace()
-            err += np.sum( (pred_label!= y_lab ))
-        err = err/len(b.index_bkup)
-        cost_val =cost_val /len(b.index_bkup)
-        return err , cost_val
 
 #theano.config.warn_float64='pdb'
     print "start training"
 
-    err, cost_test = calc_error(data_val)
+    err, cost_test = calc_error(data_val,predict)
     epoch = 0
     no_best = 10
     best_cost = np.inf
@@ -155,7 +155,7 @@ def do_train_lstm(data, data_val, **classifier_parameters):
             assert(not np.any(np.isnan(x)))
             cost_train+= train(x, y, m) *x .shape[0]#*x .shape[1]
             assert(not np.isnan(cost_train))
-            err_val, cost_val = calc_error(data_val)
+            err_val, cost_val = calc_error(data_val,predict)
             #cost_val, err_val = 0, 0
         #pdb.set_trace()
         end_time = time.time()
@@ -176,6 +176,11 @@ def do_train_lstm(data, data_val, **classifier_parameters):
             break
         epoch += 1
     return (classifier_parameters, model_params[best_epoch])
+def validate(data,data_val, predict):
+    err_val, cost_val = calc_error(data_val,predict)
+    err_train, cost_train = calc_error(data_val,predict)
+    print err_val, cost_val
+    print err_train, cost_train
 
 
 def build_model(params):
@@ -194,7 +199,7 @@ def build_model(params):
 
 def do_classification_lstm(feature_data, predict):
     length = feature_data.shape[0]
-    x, m = batch.make_batch(feature_data)
+    x, m = batch.make_batch(feature_data,1000,1000)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
     decision = predict(x, m)
     pred_label = np.argmax(np.sum(decision,axis=(0,1)), axis = -1)

@@ -100,7 +100,7 @@ def make_batch(feature_data, size=1000, hop=100):
     '''
     length = feature_data.shape[0]
     if length>size:
-        n_seg = (length-size)/hop
+        n_seg = (length-size)/hop + 1
         x = np.zeros(shape=(n_seg, size,feature_data.shape[1]),dtype='float32')
         m = np.ones(shape=(n_seg, size),dtype='float32')
         for i in range(0,n_seg):
