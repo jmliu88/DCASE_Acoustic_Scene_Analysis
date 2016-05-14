@@ -200,7 +200,7 @@ def build_model(params):
     return predict
 
 
-def do_classification_lstm(feature_data, predict):
+def do_classification(feature_data, predict):
     length = feature_data.shape[0]
     x, m = batch.make_batch(feature_data,1000,1000)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
