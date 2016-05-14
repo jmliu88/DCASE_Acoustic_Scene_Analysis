@@ -29,7 +29,7 @@ def calc_error(data_test, predict):
     b = batch.Batch(data_test, max_batchsize=5000, seg_window=15, seg_hop=5)
     err = 0
     cost_val=0
-    eps = 1e-50
+    eps = 1e-10
     for (x,y_lab,_) in b:
         decision=predict(x.reshape((x.shape[0],-1)).astype('float32')) + eps
         pred_label= np.argmax(decision,axis=-1)
@@ -38,6 +38,7 @@ def calc_error(data_test, predict):
         cost_val += -np.sum(y*np.log(decision))
         #pdb.set_trace()
         err += np.sum( (pred_label!= y_lab ))
+        assert(not np.isnan(cost_val))
     err = err/len(b.index_bkup)
     cost_val = cost_val /len(b.index_bkup)
     return err , cost_val
@@ -129,17 +130,23 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
         #pdb.set_trace()
         end_time = time.time()
 
-        print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
-        model_params.append(lasagne.layers.get_all_param_values(network))
-        check_path('dnn')
-        save_data('dnn/epoch_{}.autosave'.format(epoch), (classifier_parameters, model_params[best_epoch]))
-        #savename = os.path.join(modelDir,'epoch_{}.npz'.format(epoch))
-        #files.save_model(savename,structureDic,lasagne.layers.get_all_param_values(nnet))
         is_better = False
         if cost_val < best_cost:
             best_cost =cost_val
             best_epoch = epoch
             is_better = True
+
+        if is_better:
+            print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}, New best.".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
+        else:
+            print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
+
+        sys.stdout.flush()
+        model_params.append(lasagne.layers.get_all_param_values(network))
+        #check_path('dnn')
+        #save_data('dnn/epoch_{}.autosave'.format(epoch), (classifier_parameters, model_params[best_epoch]))
+        #savename = os.path.join(modelDir,'epoch_{}.npz'.format(epoch))
+        #files.save_model(savename,structureDic,lasagne.layers.get_all_param_values(nnet))
         if epoch - best_epoch >= no_best:
             ## Early stoping
             break

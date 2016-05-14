@@ -22,12 +22,13 @@ def framewise_onehot(y, length=1000):
 def calc_error(data_test, predict):
     ''' return error, cost on that set'''
 
+    eps = 1e-10
     b = batch.Batch(data_test, max_batchsize=500)
     err = 0
     cost_val=0
     for (x,y,m) in b:
         y = framewise_onehot(y,x.shape[1])
-        decision=predict(x.astype('float32'),m.astype('float32'))
+        decision=predict(x.astype('float32'),m.astype('float32')) + eps
         pred_label= np.argmax(decision,axis=2)
         y_lab = np.argmax(y,axis=2)
 
@@ -113,7 +114,7 @@ def do_train(data, data_val, data_test, **classifier_parameters):
     target_output = T.tensor3('target_output')
     nnet,layers = build(input_var, mask, **classifier_parameters)
 
-    eps = 1e-50
+    eps = 1e-10
     loss_train = cost(lasagne.layers.get_output(
         nnet,  deterministic=False)+eps,target_output,mask)
     loss_eval  = cost(lasagne.layers.get_output(
@@ -199,7 +200,7 @@ def build_model(params):
     return predict
 
 
-def do_classification_lstm(feature_data, predict):
+def do_classification(feature_data, predict):
     length = feature_data.shape[0]
     x, m = batch.make_batch(feature_data,1000,1000)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
