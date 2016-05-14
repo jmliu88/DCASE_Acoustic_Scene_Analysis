@@ -75,6 +75,7 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
 
     batch_maker = batch.Batch(data, isShuffle = True, seg_window=15, seg_hop=5)
     num_epochs = 10000
+    #num_epochs = 3
     # prepare theano variables for inputs and targets
     input_var = T.matrix('inputs')
     target_var = T.imatrix('targets')  # ??
@@ -102,6 +103,7 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
     # training loop
     print("Starting training...")
     epoch = 0
+    #no_best = 1
     no_best = 70
     best_cost = np.inf
     best_epoch = epoch
@@ -147,11 +149,10 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
 
 
 def build_model(model_params):
-    input_var = T.tensor3('inputs')
-    target_var = T.ivector('targets')
+    input_var = T.matrix('inputs')
 
     network = build(input_var, **model_params[0])
-    lasagne.layers.set_all_params(network,model_params[1])
+    lasagne.layers.set_all_param_values(network,model_params[1])
 
     prediction = lasagne.layers.get_output(network, deterministic=True)
 
@@ -160,7 +161,7 @@ def build_model(model_params):
     return predict
 
 # do_classification_dnn: classification for given feature data
-def do_classification_dnn(feature_data, predict):
+def do_classification(feature_data, predict):
     '''
     input feature_data
     return classification results
