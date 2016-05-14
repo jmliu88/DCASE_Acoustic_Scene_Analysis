@@ -931,6 +931,10 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 model_container = load_data(model_filename)
                 if classifier_method == 'lstm':
                     predict = lstm.build_model( model_container['models'])
+                if classifier_method == 'dnn':
+                    predict = dnn.build_model( model_container['models'])
+                if classifier_method == 'cnn':
+                    predict = cnn.build_model( model_container['models'])
             else:
                 raise IOError("Model file not found [%s]" % model_filename)
 
@@ -973,9 +977,9 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 elif classifier_method == 'lstm':
                     current_result = lstm.do_classification(feature_data,predict)
                 elif classifier_method == 'dnn':
-                    current_result = dnn.do_classification(data,**classifier_params)
+                    current_result = dnn.do_classification(feature_data,predict)
                 elif classifier_method == 'cnn':
-                    current_result = cnn.do_classification(data,**classifier_params)
+                    current_result = cnn.do_classification(feature_data,predict)
                 else:
                     raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
