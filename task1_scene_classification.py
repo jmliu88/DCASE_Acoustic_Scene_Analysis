@@ -839,6 +839,7 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
 
     """
     from multiprocessing import Process
+    import Queue
 
     #pdb.set_trace()
     if classifier_method not in model_bank:
@@ -853,13 +854,15 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
     do_fold_train_partial = partial(do_fold_train,**{k:values[k] for k in args})
     # Fork len(fold) processes to process each fold respectively. The subprocess will be associated with diff gpus
     jobs = []
+
+    gpu_list = [0,1,2,3]
     for fold in dataset.folds(mode=dataset_evaluation_mode):
-        p=Process(target=do_fold_train_partial, kwargs={'fold':fold, 'device':'gpu%d'%fold, 'logging':'log_%d'%fold})
+        p=Process(target=do_fold_train_partial, kwargs={'fold':fold, 'device':'gpu%d'%gpu_list[fold-1], 'logging':os.path.join(model_path,'log_%d'%fold)})
         jobs.append(p)
         p.start()
         print 'fold%d started.'%fold
     for i_thread in jobs:
-        i_thead.join()
+        i_thread.join()
 
 
 def do_system_testing(dataset, result_path, feature_path, model_path, feature_params,
