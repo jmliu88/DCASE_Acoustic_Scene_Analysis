@@ -5,9 +5,10 @@ flow:
   initialize: true
   extract_features: true
   feature_normalizer: true
-  train_system: true
+  train_system: false
   test_system: true
   evaluate_system: true
+  train_system_parallel: false
 
 # ==========================================================
 # General
@@ -65,6 +66,7 @@ features:
 classifier:
   method: gmm                   # The system supports only gmm
   parameters: !!null            # Parameters are copied from classifier_parameters based on defined method
+  overwrite: false
 
 classifier_parameters:
   gmm:
