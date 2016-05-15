@@ -19,11 +19,10 @@ def framewise_onehot(y, length=1000):
         y_hat[i,:,int(y[i])] = 1
     return y_hat
 
-def calc_error(data_test, predict):
+def calc_error(b, predict):
     ''' return error, cost on that set'''
 
     eps = 1e-10
-    b = batch.Batch(data_test, max_batchsize=500)
     err = 0
     cost_val=0
     for (x,y,m) in b:
@@ -107,7 +106,9 @@ def do_train(data, data_val, data_test, **classifier_parameters):
     '''
     import time
     import pdb
-    batch_maker = batch.Batch(data, isShuffle = True)
+    batch_maker = batch.Batch(data, isShuffle = True, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2)
+    b_v = batch.Batch(data_val, max_batchsize=500, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2)
+    b_t = batch.Batch(data_test, max_batchsize=500, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2)
 
     input_var = T.tensor3('input')
     mask = T.matrix('mask')
@@ -156,9 +157,9 @@ def do_train(data, data_val, data_test, **classifier_parameters):
             cost_train+= train(x, y, m) *x .shape[0]#*x .shape[1]
             assert(not np.isnan(cost_train))
         cost_train = cost_train/ len(batch_maker.index_bkup)
-        err_val, cost_val = calc_error(data_val,predict)
+        err_val, cost_val = calc_error(b_v,predict)
 
-        err_test, cost_test = calc_error(data_test,predict)
+        err_test, cost_test = calc_error(b_t,predict)
             #cost_val, err_val = 0, 0
         #pdb.set_trace()
         end_time = time.time()
@@ -201,8 +202,8 @@ def build_model(params):
 
 
 def do_classification(feature_data, predict, params):
-    length = feature_data.shape[0]
-    x, m = batch.make_batch(feature_data,1000,1000)
+    length = params['max_length']
+    x, m = batch.make_batch(feature_data,length,length/2)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
     decision = predict(x, m)
     pred_label = np.argmax(np.sum(decision,axis=(0,1)), axis = -1)

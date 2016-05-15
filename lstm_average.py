@@ -17,11 +17,10 @@ from src.dataset import *
 from src.evaluation import *
 
 
-def calc_error(data_test, predict):
+def calc_error(b, predict):
     ''' return error, cost on that set'''
 
     eps = 1e-10
-    b = batch.Batch(data_test, max_batchsize=500)
     err = 0
     cost_val=0
     for (x,y_lab,m) in b:
@@ -106,6 +105,8 @@ def do_train(data, data_val, data_test, **classifier_parameters):
     '''
     import time
     batch_maker = batch.Batch(data, isShuffle = True, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2)
+    b_v = batch.Batch(data_val, isShuffle = True, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2)
+    b_t = batch.Batch(data_test, isShuffle = True, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2)
 
     input_var = T.tensor3('input')
     mask = T.matrix('mask')
@@ -153,9 +154,9 @@ def do_train(data, data_val, data_test, **classifier_parameters):
             cost_train+= train(x, y, m) *x .shape[0]#*x .shape[1]
             assert(not np.isnan(cost_train))
         cost_train = cost_train/ len(batch_maker.index_bkup)
-        err_val, cost_val = calc_error(data_val,predict)
+        err_val, cost_val = calc_error(b_v,predict)
 
-        err_test, cost_test = calc_error(data_test,predict)
+        err_test, cost_test = calc_error(b_t,predict)
             #cost_val, err_val = 0, 0
         #pdb.set_trace()
         end_time = time.time()
