@@ -661,6 +661,8 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
         import lstm
         import dnn
         import sys
+        import lstm_average
+        import lstm_attention
 
         if logging is not None:
             old_stdout = sys.stdout
@@ -766,6 +768,10 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
                     model_container['models'][label] = mixture.GMM(**classifier_params).fit(data[label])
             elif classifier_method == 'lstm':
                 model_container['models'] = lstm.do_train(data, data_val, data_eval, **classifier_params)
+            elif classifier_method == 'lstm_average':
+                model_container['models'] = lstm_average.do_train(data, data_val, data_eval, **classifier_params)
+            elif classifier_method == 'lstm_attention':
+                model_container['models'] =lstm_attention.do_train(data, data_val, data_eval, **classifier_params)
                 ## add training log
             elif classifier_method == 'dnn':
                 model_container['models'] = dnn.do_train(data, data_val, data_eval, **classifier_params)
@@ -916,6 +922,8 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
     """
     import lstm
     import dnn
+    import lstm_average
+    import lstm_attention
 
     if classifier_method not in  model_bank:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
@@ -934,6 +942,10 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 model_container = load_data(model_filename)
                 if classifier_method == 'lstm':
                     predict = lstm.build_model( model_container['models'])
+                if classifier_method == 'lstm_average':
+                    predict = lstm_average.build_model( model_container['models'])
+                if classifier_method == 'lstm_attention':
+                    predict = lstm_attention.build_model( model_container['models'])
                 if classifier_method == 'dnn':
                     predict = dnn.build_model( model_container['models'])
                 if classifier_method == 'cnn':
@@ -976,13 +988,17 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
 
                 # Do classification for the block
                 if classifier_method == 'gmm':
-                    current_result = do_classification_gmm(feature_data, model_container['models'])
+                    current_result = do_classification_gmm(feature_data, model_container)
                 elif classifier_method == 'lstm':
-                    current_result = lstm.do_classification(feature_data,predict)
+                    current_result = lstm.do_classification(feature_data,predict,model_container['models'])
+                elif classifier_method == 'lstm_average':
+                    current_result = lstm_average.do_classification(feature_data,predict,model_container['models'])
+                elif classifier_method == 'lstm_attention':
+                    current_result = lstm_attention.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'dnn':
-                    current_result = dnn.do_classification(feature_data,predict)
+                    current_result = dnn.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'cnn':
-                    current_result = cnn.do_classification(feature_data,predict)
+                    current_result = cnn.do_classification(feature_data,predict,model_container['models'])
                 else:
                     raise ValueError("Unknown classifier method ["+classifier_method+"]")
 

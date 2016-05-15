@@ -17,12 +17,8 @@ from src.dataset import *
 from src.evaluation import *
 import batch
 import pdb
+from utils import *
 
-def onehot(y):
-    y_hat = np.zeros(shape = (y.shape[0], 15),dtype='int32')
-    for i in range(y.shape[0]):
-        y_hat[i,int(y[i])] = 1
-    return y_hat
 def calc_error(data_test, predict):
     ''' return error, cost on that set'''
 
@@ -168,7 +164,7 @@ def build_model(model_params):
     return predict
 
 # do_classification_dnn: classification for given feature data
-def do_classification(feature_data, predict):
+def do_classification(feature_data, predict, params):
     '''
     input feature_data
     return classification results

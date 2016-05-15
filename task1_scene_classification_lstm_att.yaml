@@ -8,7 +8,7 @@ flow:
   train_system: true
   test_system: true
   evaluate_system: true
-  train_system_parallel: false
+  train_system_parallel: true
 
 # ==========================================================
 # General
@@ -25,7 +25,7 @@ general:
 path:
   data: data/
 
-  base: system/baseline_dcase2016_task1_lstm_parrel/
+  base: system/baseline_dcase2016_task1_lstm_avg/
   features: features/
   feature_normalizers: feature_normalizers/
   models: acoustic_models/
@@ -64,17 +64,17 @@ features:
 # Classifier
 # ==========================================================
 classifier:
-  method: lstm                  # The system supports only gmm
+  method: lstm_attention                  # The system supports only gmm
   parameters: !!null            # Parameters are copied from classifier_parameters based on defined method
   overwrite: true
 
 classifier_parameters:
-  lstm:
+  lstm_attention:
     n_layers: 2
     n_hidden_blstm: 126
     dropout_rate_dense: 0.5
     n_dense: 3
     n_hidden_dense: 125
     n_class: 15
-    max_length: 1000
+    max_length: 100
     feat_dim: 60
