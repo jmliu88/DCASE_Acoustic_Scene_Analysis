@@ -32,10 +32,9 @@ def calc_error(data_test, predict):
         y = onehot(y_lab)
 
         cost_val += -np.sum(y*np.log(decision))
-        #pdb.set_trace()
-        err += np.sum( (pred_label!= y_lab ))
+        err += np.sum( np.expand_dims(pred_label, axis = 1)!= y_lab )
         assert(not np.isnan(cost_val))
-    err = err/len(b.index_bkup)
+    err = err/float(len(b.index_bkup))
     cost_val = cost_val /len(b.index_bkup)
     return err , cost_val
 
