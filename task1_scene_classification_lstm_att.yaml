@@ -8,7 +8,7 @@ flow:
   train_system: true
   test_system: true
   evaluate_system: true
-  train_system_parallel: true
+  train_system_parallel: false
 
 # ==========================================================
 # General

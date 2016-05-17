@@ -30,8 +30,8 @@ def calc_error(b, predict):
 
         cost_val += -np.sum(y*np.log(decision))
         #pdb.set_trace()
-        err += np.sum( (pred_label!= y_lab ))
-    err = err/len(b.index_bkup)
+        err += np.sum( np.expand_dims(pred_label,axis=1) != y_lab )
+    err = err/float(len(b.index_bkup))
     cost_val = cost_val /len(b.index_bkup)
     return err , cost_val
 
@@ -67,7 +67,10 @@ def build(input_var,mask,  dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, 
         l_forward_1.forgetgate=lasagne.layers.Gate(W_in=lasagne.init.Normal(0.1), W_hid=lasagne.init.Normal(0.1), W_cell=lasagne.init.Normal(0.1), b=lasagne.init.Constant(1.))#w_in_to_ingate.set_value(val['w_in_to_ingate'].astype('float32'))
         l_backward_1.forgetgate=lasagne.layers.Gate(W_in=lasagne.init.Normal(0.1), W_hid=lasagne.init.Normal(0.1), W_cell=lasagne.init.Normal(0.1), b=lasagne.init.Constant(1.))#w_in_to_ingate.set_value(val['w_in_to_ingate'].astype('float32'))
 
-    layer = AttentionLayer(layer)
+    attention_layers = []
+    for i_attention in range(10):
+        attention_layers.append( AttentionLayer(layer))
+    layer = lasagne.layers.ConcatLayer(attention_layers)
     #layer = lasagne.layers.ReshapeLayer(layer , (-1,n_hidden_blstm))
 
     for iLayer in range(n_dense):
@@ -134,13 +137,13 @@ def do_train(data, data_val, data_test, **classifier_parameters):
 
     #err, cost_test = calc_error(data_val,predict)
     epoch = 0
-    no_best = 10
+    no_best = 70
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
     # TO REMOVE
     #model_params.append(lasagne.layers.get_all_param_values(network))
-    while epoch < 100:
+    while epoch < 500:
 
         start_time = time.time()
         cost_train = 0
@@ -206,7 +209,7 @@ def build_model(params):
 
 
 def do_classification(feature_data, predict, params):
-    length = params['max_length']
+    length = params[0]['max_length']
     x, m = batch.make_batch(feature_data,length,length/2)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
     decision = predict(x, m)

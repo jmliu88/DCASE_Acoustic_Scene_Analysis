@@ -30,8 +30,8 @@ def calc_error(b, predict):
 
         cost_val += -np.sum(y*np.log(decision))
         #pdb.set_trace()
-        err += np.sum( (pred_label!= y_lab ))
-    err = err/len(b.index_bkup)
+        err += np.sum( np.expand_dims(pred_label,axis=1) != y_lab )
+    err = float(err/len(b.index_bkup))
     cost_val = cost_val /len(b.index_bkup)
     return err , cost_val
 
@@ -206,7 +206,7 @@ def build_model(params):
 
 
 def do_classification(feature_data, predict, params):
-    length = params['max_length']
+    length = params[0]['max_length']
     x, m = batch.make_batch(feature_data,length,length/2)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
     decision = predict(x, m)
