@@ -8,7 +8,7 @@ flow:
   train_system: true
   test_system: true
   evaluate_system: true
-  train_system_parallel: false
+  train_system_parallel: true
 
 # ==========================================================
 # General
@@ -75,6 +75,7 @@ classifier_parameters:
     dropout_rate_dense: 0.5
     n_dense: 3
     n_hidden_dense: 125
+    n_attention: 3
     n_class: 15
     max_length: 100
     feat_dim: 60
