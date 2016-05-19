@@ -484,6 +484,10 @@ def do_feature_extraction(files, dataset, feature_path, params, overwrite=False)
 
     # Check that target path exists, create if not
     check_path(feature_path)
+    # Get feature type, currently support mfcc, plp, spectrum
+
+    feature_bank = ['mfcc', 'plp', 'spectrum']
+    featrue_type=[x for x in params.keys() if x in feature_bank][0]
 
     for file_id, audio_filename in enumerate(files):
         # Get feature filename
@@ -506,6 +510,7 @@ def do_feature_extraction(files, dataset, feature_path, params, overwrite=False)
                                               include_mfcc0=params['include_mfcc0'],
                                               include_delta=params['include_delta'],
                                               include_acceleration=params['include_acceleration'],
+                                              feature_type=feature_type,
                                               mfcc_params=params['mfcc'],
                                               delta_params=params['mfcc_delta'],
                                               acceleration_params=params['mfcc_acceleration'])
