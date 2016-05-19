@@ -24,8 +24,9 @@ def calc_error(b, predict):
     err = 0
     cost_val=0
     for (x,y_lab,m) in b:
+        x=batch.make_context(x,15)
         y = onehot(y_lab)
-        decision=predict(x.astype('float32'),m.astype('float32')) + eps
+        decision=predict(x.astype('float32')) + eps
         pred_label= np.argmax(decision,axis=-1)
 
         cost_val += -np.sum(y*np.log(decision))
@@ -35,12 +36,12 @@ def calc_error(b, predict):
     cost_val = cost_val /len(b.index_bkup)
     return err , cost_val
 
-def build(input_var,mask,  dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, n_attention = 3, n_hidden_blstm = 125, n_hidden_dense= 256, n_class = 10, max_length = 1000, feat_dim = 60):
+def build(input_var,  dropout_rate_dense = 0.2, dropout_rate_pre = 0.2, n_layers_pre = 3, n_hidden_pre = 125, n_dense = 3, n_hidden_dense= 256, n_attention=10, n_class = 10, max_length = 1000, feat_dim = 60):
 
     l_in = lasagne.layers.InputLayer(
         shape=(None, max_length, feat_dim), name='Input', input_var = input_var)
-    l_mask = lasagne.layers.InputLayer(
-        shape= (None, max_length), name='Mask input', input_var= mask)
+    #l_mask = lasagne.layers.InputLayer(
+        #shape= (None, max_length), name='Mask input', input_var= mask)
     #input_shape = (None, max_length, feat_dim)
 # Construct network
     #n_batch, n_seq, n_features = l_in .input_var.shape
@@ -49,29 +50,19 @@ def build(input_var,mask,  dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, 
     layer = l_in
     layers = {'in':layer}
     layer = lasagne.layers.GaussianNoiseLayer(layer)
-    #layer = lasagne.layers.ReshapeLayer(layer , (-1 ,feat_dim))
-    for iLayer in range(n_layers):
-        #layer = lasagne.layers.DropoutLayer(layer,p=dropout_rate_blstm)
-        #layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length,n_hidden_blstm))
+    layer = lasagne.layers.ReshapeLayer(layer , (-1 ,feat_dim))
+    for iLayer in range(n_layers_pre):
+        layer = lasagne.layers.DropoutLayer(layer,p=dropout_rate_pre)
+        layer = lasagne.layers.DenseLayer(layer, num_units=n_hidden_pre, nonlinearity = lasagne.nonlinearities.leaky_rectify,W = lasagne.init.Orthogonal(np.sqrt(2/(1+0.01**2))),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
+        layers['dense_pre_%d'%iLayer] = layer
 
-        l_forward_1 = lasagne.layers.LSTMLayer(
-            layer, num_units=n_hidden_blstm/2, name='Forward LSTM %d'%iLayer, mask_input=l_mask)
-        l_backward_1 = lasagne.layers.LSTMLayer(
-            layer, num_units=n_hidden_blstm/2, backwards=True, name='Backwards LSTM %d'%iLayer,
-            mask_input=l_mask)
-        layer = lasagne.layers.ConcatLayer(
-            [l_forward_1, l_backward_1], axis=-1, name='Sum 1')
-        layers['forward_%d'%iLayer] = l_forward_1
-        layers['backward_%d'%iLayer] = l_backward_1
-        layers['blstm_%d'%iLayer] = layer
-        l_forward_1.forgetgate=lasagne.layers.Gate(W_in=lasagne.init.Normal(0.1), W_hid=lasagne.init.Normal(0.1), W_cell=lasagne.init.Normal(0.1), b=lasagne.init.Constant(1.))#w_in_to_ingate.set_value(val['w_in_to_ingate'].astype('float32'))
-        l_backward_1.forgetgate=lasagne.layers.Gate(W_in=lasagne.init.Normal(0.1), W_hid=lasagne.init.Normal(0.1), W_cell=lasagne.init.Normal(0.1), b=lasagne.init.Constant(1.))#w_in_to_ingate.set_value(val['w_in_to_ingate'].astype('float32'))
-
+    layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length , n_hidden_pre))
     attention_layers = []
     for i_attention in range(n_attention):
         attention_layers.append( AttentionLayer(layer))
     layer = lasagne.layers.ConcatLayer(attention_layers)
     #layer = lasagne.layers.ReshapeLayer(layer , (-1,n_hidden_blstm))
+    layers['attention'] = layer
 
     for iLayer in range(n_dense):
         layer = lasagne.layers.DropoutLayer(layer,p = dropout_rate_dense)
@@ -90,7 +81,7 @@ def build(input_var,mask,  dropout_rate_dense = 0.2, n_layers = 3, n_dense = 3, 
 def cost_prev(output,target_output,mask):
     return -T.sum(mask.dimshuffle(0, 1, 'x') *
                 target_output*T.log(output))/(mask.shape[0])
-def cost(output,target_output,mask):
+def cost(output,target_output):
     return -T.sum(target_output*T.log(output))/(output.shape[0])
 def do_train(data, data_val, data_test, **classifier_parameters):
     ''' input
@@ -114,22 +105,22 @@ def do_train(data, data_val, data_test, **classifier_parameters):
     input_var = T.tensor3('input')
     mask = T.matrix('mask')
     target_output = T.matrix('target_output')
-    network,layers = build(input_var, mask, **classifier_parameters)
+    network,layers = build(input_var, **classifier_parameters)
 
     eps = 1e-10
     loss_train = cost(lasagne.layers.get_output(
-        network,  deterministic=False)+eps,target_output,mask)
+        network,  deterministic=False)+eps,target_output)
     loss_eval  = cost(lasagne.layers.get_output(
-        network,  deterministic=True)+eps,target_output, mask)
+        network,  deterministic=True)+eps,target_output)
     all_params = lasagne.layers.get_all_params(network)
     updates = lasagne.updates.adadelta(loss_train,all_params,learning_rate=1.0)
     #updates = lasagne.updates.momentum(loss_train , all_params,
                                     #learning_rate, momentum)
     pred_fun = lasagne.layers.get_output(
             network, deterministic=True)
-    train = theano.function([input_var, target_output, mask],loss_train , updates=updates)
+    train = theano.function([input_var, target_output],loss_train , updates=updates)
     #compute_cost = theano.function([input_var, target_output, mask],loss_eval)
-    predict = theano.function( [input_var, mask], pred_fun)
+    predict = theano.function( [input_var], pred_fun)
 
 
 #theano.config.warn_float64='pdb'
@@ -148,13 +139,14 @@ def do_train(data, data_val, data_test, **classifier_parameters):
         start_time = time.time()
         cost_train = 0
         for _, (x ,y ,m) in enumerate(batch_maker):
+            x=batch.make_context(x,15)
             x =x .astype('float32')
             m=m.astype('float32')
             y = onehot(y)
             y=y.astype('float32')
 
             assert(not np.any(np.isnan(x)))
-            cost_train+= train(x, y, m) *x .shape[0]#*x .shape[1]
+            cost_train+= train(x, y) *x .shape[0]#*x .shape[1]
             assert(not np.isnan(cost_train))
         cost_train = cost_train/ len(batch_maker.index_bkup)
         err_val, cost_val = calc_error(b_v,predict)
@@ -199,11 +191,11 @@ def build_model(params):
     mask = T.matrix('mask')
     target_output = T.tensor3('target_output')
 
-    network,layers = build(input_var, mask, **params[0])
+    network,layers = build(input_var, **params[0])
     lasagne.layers.set_all_param_values(network,params[1])
 
     pred_fun = lasagne.layers.get_output( network, deterministic=True)
-    predict = theano.function( [input_var, mask], pred_fun)
+    predict = theano.function( [input_var], pred_fun)
 
     return predict
 
@@ -211,7 +203,8 @@ def build_model(params):
 def do_classification(feature_data, predict, params):
     length = params[0]['max_length']
     x, m = batch.make_batch(feature_data,length,length/2)
+    x=batch.make_context(x,15)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
-    decision = predict(x, m)
+    decision = predict(x)
     pred_label = np.argmax(np.sum(decision,axis=0), axis = -1)
     return batch.labels[pred_label]

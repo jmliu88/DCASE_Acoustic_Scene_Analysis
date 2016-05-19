@@ -111,8 +111,28 @@ def make_batch(feature_data, size=1000, hop=100):
         m = np.zeros(shape=(1,size))
         m[:,:length] = 1
     return x,m
+
+def make_context(x, context = 15):
+    left_padding = right_padding = context/2
+    n_sample, length, feat_dim = x.shape
+    x_extend = np.zeros(shape = (x.shape[0],x.shape[1], x.shape[2]*context), dtype='float32')
+
+
+    x = np.lib.pad(x,((0,0),(left_padding,right_padding),(0,0)), 'edge')
+    ## Magic here
+    for i in range(context):
+        x_extend[:, :, feat_dim*i:feat_dim*(i+1)] = x[:, i:length+i, :]
+    return x_extend
+
 if __name__ == '__main__':
-    label2index('a')
+    x = np.array([[1,2,3]])
+    x = np.repeat(x,5,axis=0)
+    x = np.expand_dims(x,axis=0)
+    print x
+    x_hat = make_context(x,context = 1)
+    print x_hat
+    x_hat = make_context(x,context = 3)
+    print x_hat[0,0,:]
     pass
     ## untested
     #data = sys.argv[1]

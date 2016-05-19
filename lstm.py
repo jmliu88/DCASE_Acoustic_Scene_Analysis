@@ -58,9 +58,9 @@ def build(input_var,mask, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_
         #layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length,n_hidden_blstm))
 
         l_forward_1 = lasagne.layers.LSTMLayer(
-            layer, num_units=n_hidden_blstm/2, name='Forward LSTM %d'%iLayer, mask_input=l_mask)
+            layer, num_units=n_hidden_blstm/2, grad_clipping=5, name='Forward LSTM %d'%iLayer, mask_input=l_mask)
         l_backward_1 = lasagne.layers.LSTMLayer(
-            layer, num_units=n_hidden_blstm/2, backwards=True, name='Backwards LSTM %d'%iLayer,
+            layer, num_units=n_hidden_blstm/2, grad_clipping=5, backwards=True, name='Backwards LSTM %d'%iLayer,
             mask_input=l_mask)
         layer = lasagne.layers.ConcatLayer(
             [l_forward_1, l_backward_1], axis=-1, name='Sum 1')
@@ -136,13 +136,13 @@ def do_train(data, data_val, data_test, **classifier_parameters):
 
     #err, cost_test = calc_error(data_val,predict)
     epoch = 0
-    no_best = 10
+    no_best = 70
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
     # TO REMOVE
     #model_params.append(lasagne.layers.get_all_param_values(nnet))
-    while epoch < 100:
+    while epoch < 10000:
 
         start_time = time.time()
         cost_train = 0
@@ -202,7 +202,7 @@ def build_model(params):
 
 
 def do_classification(feature_data, predict, params):
-    length = params['max_length']
+    length = params[0]['max_length']
     x, m = batch.make_batch(feature_data,length,length/2)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
     decision = predict(x, m)

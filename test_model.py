@@ -17,14 +17,11 @@ import argparse
 import textwrap
 
 from sklearn import mixture
-import inspect
-from functools import partial
 import pdb
 
 __version_info__ = ('1', '0', '0')
 __version__ = '.'.join(__version_info__)
 
-model_bank = ['gmm','lstm','dnn','cnn', 'lstm_average', 'lstm_attention', 'ff_attention', 'ff_avg']
 
 def main(argv):
     numpy.random.seed(123456)  # let's make randomization predictable
@@ -137,18 +134,8 @@ def main(argv):
     if params['flow']['train_system']:
         section_header('System training')
 
-        if params['flow']['train_system_parallel']:
-            do_system_training_parallel(dataset=dataset,
-                           model_path=params['path']['models'],
-                           feature_normalizer_path=params['path']['feature_normalizers'],
-                           feature_path=params['path']['features'],
-                           classifier_params=params['classifier']['parameters'],
-                           classifier_method=params['classifier']['method'],
-                           dataset_evaluation_mode=dataset_evaluation_mode,
-                           overwrite=params['classifier']['overwrite']
-                           )
-        else:
-            do_system_training(dataset=dataset,
+        do_system_training(dataset=dataset,
+        #do_system_training_parallel(dataset=dataset,
                            model_path=params['path']['models'],
                            feature_normalizer_path=params['path']['feature_normalizers'],
                            feature_path=params['path']['features'],
@@ -175,7 +162,7 @@ def main(argv):
                               feature_params=params['features'],
                               dataset_evaluation_mode=dataset_evaluation_mode,
                               classifier_method=params['classifier']['method'],
-                              overwrite=True
+                              overwrite=params['general']['overwrite']
                               )
 
             foot()
@@ -639,40 +626,17 @@ def do_system_training(dataset, model_path, feature_normalizer_path, feature_pat
         Feature file not found.
 
     """
+    import lstm
 
     #pdb.set_trace()
-    if classifier_method not in model_bank:
+    if classifier_method not in ['gmm','lstm','dnn']:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
     # Check that target path exists, create if not
     check_path(model_path)
-    frame = inspect.currentframe()
-    args, _, _, values = inspect.getargvalues(frame)
 
-    # Training models on the folds
     for fold in dataset.folds(mode=dataset_evaluation_mode):
-        do_fold_train(fold=fold, logging=None, **{k:values[k] for k in args})
-        #do_fold_train_partial({'fold':fold, 'device':'gpu%d'%0, 'logging':None})
-
-def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, classifier_params,
-                       dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=False, fold=2, device='gpu3', logging='sdflkdsajgh.txt'):
-        import theano.sandbox.cuda
-        theano.sandbox.cuda.use(device)
-        import lstm
-        import dnn
-        import cnn
-        import sys
-        import lstm_average
-        import lstm_attention
-        import ff_attention
-        import ff_avg
-
-        if logging is not None:
-            old_stdout = sys.stdout
-            log_file = open(logging,"a")
-            sys.stdout = log_file
-        print "fold %d started"%fold
-
+    #for fold in [1]:
         current_model_file = get_model_filename(fold=fold, path=model_path)
         if not os.path.isfile(current_model_file) or overwrite:
             # Load normalizer
@@ -683,7 +647,12 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
                 raise IOError("Feature normalizer not found [%s]" % feature_normalizer_filename)
 
             # Initialize model container
+
             model_container = {'normalizer': normalizer, 'models': {}}
+            if os.path.isfile(current_model_file):
+                model_container = load_data(current_model_file)
+            else:
+                print "No file named %s"%current_model_file
 
             # Collect training examples
             file_count = len(dataset.train(fold))
@@ -736,31 +705,6 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
                     data_val[item['scene_label']] = numpy.vstack((data_val[item['scene_label']], feature_data))
                     #data_val[item['scene_label']].append(feature_data)
 
-            # Collecting evaluation set
-            file_count = len(dataset.evaluate(fold))
-            data_eval = {}
-            for item_id, item in enumerate(dataset.evaluate(fold)):
-                progress(title_text='Collecting data_eval',
-                         fold=fold,
-                         percentage=(float(item_id) / file_count),
-                         note=os.path.split(item['file'])[1])
-
-                # Load features
-                feature_filename = get_feature_filename(audio_file=item['file'], path=feature_path)
-                if os.path.isfile(feature_filename):
-                    feature_data = load_data(feature_filename)['feat']
-                else:
-                    raise IOError("Features not found [%s]" % (item['file']))
-
-                # Scale features
-                feature_data = model_container['normalizer'].normalize(feature_data)
-
-                # Store features per class label
-                if item['scene_label'] not in data_eval:
-                    data_eval[item['scene_label']] = feature_data
-                    #data_val[item['scene_label']] = [feature_data]
-                else:
-                    data_eval[item['scene_label']] = numpy.vstack((data_eval[item['scene_label']], feature_data))
             print classifier_params
             if classifier_method == 'gmm':
                 # Train models for each class
@@ -770,28 +714,17 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
                             note=label)
                     model_container['models'][label] = mixture.GMM(**classifier_params).fit(data[label])
             elif classifier_method == 'lstm':
-                model_container['models'] = lstm.do_train(data, data_val, data_eval, **classifier_params)
-            elif classifier_method == 'lstm_average':
-                model_container['models'] = lstm_average.do_train(data, data_val, data_eval, **classifier_params)
-            elif classifier_method == 'lstm_attention':
-                model_container['models'] =lstm_attention.do_train(data, data_val, data_eval, **classifier_params)
-            elif classifier_method == 'ff_attention':
-                model_container['models'] =ff_attention.do_train(data, data_val, data_eval, **classifier_params)
-            elif classifier_method == 'ff_avg':
-                model_container['models'] =ff_avg.do_train(data, data_val, data_eval, **classifier_params)
+                if classifier_method == 'lstm':
+                    predict = lstm.build_model( model_container['models'])
+                    lstm.validate(data, data_val,predict)
                 ## add training log
             elif classifier_method == 'dnn':
-                model_container['models'] = dnn.do_train(data, data_val, data_eval, **classifier_params)
-            elif classifier_method == 'cnn':
-                model_container['models'] = cnn.do_train(data, data_val, data_eval, **classifier_params)
+                model_container['models'] = dnn.do_train(data, data_val,**classifier_params)
             else:
                 raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
-            # Save models
-            save_data(current_model_file, model_container)
-        if logging is not None:
-            sys.stdout = old_stdout
-            log_file.close()
+
+
 def do_system_training_parallel(dataset, model_path, feature_normalizer_path, feature_path, classifier_params,
                        dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=False):
     """System training
@@ -851,11 +784,12 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
         Feature file not found.
 
     """
+    import inspect
     from multiprocessing import Process
-    import Queue
+    from functools import partial
 
     #pdb.set_trace()
-    if classifier_method not in model_bank:
+    if classifier_method not in ['gmm','lstm','dnn']:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
     # Check that target path exists, create if not
@@ -867,19 +801,17 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
     do_fold_train_partial = partial(do_fold_train,**{k:values[k] for k in args})
     # Fork len(fold) processes to process each fold respectively. The subprocess will be associated with diff gpus
     jobs = []
-
-    gpu_list = [0,1,2,3]
     for fold in dataset.folds(mode=dataset_evaluation_mode):
-        p=Process(target=do_fold_train_partial, kwargs={'fold':fold, 'device':'gpu%d'%gpu_list[fold-1], 'logging':os.path.join(model_path,'log_%d'%fold)})
+        p=Process(target=do_fold_train_partial, kwargs={'fold':fold, 'device':'gpu%d'%fold, 'logging':'log_%d'%fold})
         jobs.append(p)
         p.start()
         print 'fold%d started.'%fold
-    for i_thread in jobs:
-        i_thread.join()
+    for fold in dataset.folds(mode=dataset_evaluation_mode):
+        jobs[fold].join()
 
 
 def do_system_testing(dataset, result_path, feature_path, model_path, feature_params,
-                      dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=True):
+                      dataset_evaluation_mode='folds', classifier_method='gmm', overwrite=False):
     """System testing.
 
     If extracted features are not found from disk, they are extracted but not saved.
@@ -927,15 +859,8 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
         Audio file not found.
 
     """
-    import lstm
-    import dnn
-    import cnn
-    import lstm_average
-    import lstm_attention
-    import ff_attention
-    import ff_avg
 
-    if classifier_method not in  model_bank:
+    if classifier_method not in  ['gmm','lstm','dnn']:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
     # Check that target path exists, create if not
@@ -952,18 +877,6 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 model_container = load_data(model_filename)
                 if classifier_method == 'lstm':
                     predict = lstm.build_model( model_container['models'])
-                if classifier_method == 'lstm_average':
-                    predict = lstm_average.build_model( model_container['models'])
-                if classifier_method == 'lstm_attention':
-                    predict = lstm_attention.build_model( model_container['models'])
-                if classifier_method == 'ff_attention':
-                    predict = ff_attention.build_model( model_container['models'])
-                if classifier_method == 'ff_avg':
-                    predict =ff_avg.build_model( model_container['models'])
-                if classifier_method == 'dnn':
-                    predict = dnn.build_model( model_container['models'])
-                if classifier_method == 'cnn':
-                    predict = cnn.build_model( model_container['models'])
             else:
                 raise IOError("Model file not found [%s]" % model_filename)
 
@@ -977,46 +890,17 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 # Load features
                 feature_filename = get_feature_filename(audio_file=item['file'], path=feature_path)
 
-                #pdb.set_trace()
                 if os.path.isfile(feature_filename):
-                #if False:
                     feature_data = load_data(feature_filename)['feat']
-                else: # Load audio
-                    if os.path.isfile(dataset.relative_to_absolute_path(item['file'])):
-                        y, fs = load_audio(filename=dataset.relative_to_absolute_path(item['file']), mono=True, fs=feature_params['fs'])
-                    else:
-                        raise IOError("Audio file not found [%s]" % (item['file']))
-
-                    feature_data = feature_extraction(y=y,
-                                                      fs=fs,
-                                                      include_mfcc0=feature_params['include_mfcc0'],
-                                                      include_delta=feature_params['include_delta'],
-                                                      include_acceleration=feature_params['include_acceleration'],
-                                                      mfcc_params=feature_params['mfcc'],
-                                                      delta_params=feature_params['mfcc_delta'],
-                                                      acceleration_params=feature_params['mfcc_acceleration'],
-                                                      statistics=False)['feat']
-
-                # Normalize features
-                feature_data = model_container['normalizer'].normalize(feature_data)
+                else:model_container['normalizer'].normalize(feature_data)
 
                 # Do classification for the block
                 if classifier_method == 'gmm':
-                    current_result = do_classification_gmm(feature_data, model_container)
+                    current_result = do_classification_gmm(feature_data, model_container['models'])
                 elif classifier_method == 'lstm':
-                    current_result = lstm.do_classification(feature_data,predict,model_container['models'])
-                elif classifier_method == 'lstm_average':
-                    current_result = lstm_average.do_classification(feature_data,predict,model_container['models'])
-                elif classifier_method == 'lstm_attention':
-                    current_result = lstm_attention.do_classification(feature_data,predict,model_container['models'])
-                elif classifier_method == 'ff_attention':
-                    current_result = ff_attention.do_classification(feature_data,predict,model_container['models'])
-                elif classifier_method == 'ff_avg':
-                    current_result =ff_avg.do_classification(feature_data,predict,model_container['models'])
+                    current_result = lstm.do_classification_lstm(feature_data,predict)
                 elif classifier_method == 'dnn':
-                    current_result = dnn.do_classification(feature_data,predict,model_container['models'])
-                elif classifier_method == 'cnn':
-                    current_result = cnn.do_classification(feature_data,predict,model_container['models'])
+                    current_result = dnn.do_classification_dnn(data,**classifier_params)
                 else:
                     raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
