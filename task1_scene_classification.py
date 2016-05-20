@@ -237,8 +237,8 @@ def process_parameters(params):
     """
 
     # Convert feature extraction window and hop sizes seconds to samples
-    params['features']['mfcc']['win_length'] = int(params['features']['win_length_seconds'] * params['features']['fs'])
-    params['features']['mfcc']['hop_length'] = int(params['features']['hop_length_seconds'] * params['features']['fs'])
+    params['features']['win_length'] = int(params['features']['win_length_seconds'] * params['features']['fs'])
+    params['features']['hop_length'] = int(params['features']['hop_length_seconds'] * params['features']['fs'])
 
     # Copy parameters for current classifier method
     params['classifier']['parameters'] = params['classifier_parameters'][params['classifier']['method']]
@@ -486,8 +486,7 @@ def do_feature_extraction(files, dataset, feature_path, params, overwrite=False)
     check_path(feature_path)
     # Get feature type, currently support mfcc, plp, spectrum
 
-    feature_bank = ['mfcc', 'plp', 'spectrum']
-    featrue_type=[x for x in params.keys() if x in feature_bank][0]
+    feature_bank = ['mfcc', 'melspec', 'spectrum']
 
     for file_id, audio_filename in enumerate(files):
         # Get feature filename
@@ -510,8 +509,8 @@ def do_feature_extraction(files, dataset, feature_path, params, overwrite=False)
                                               include_mfcc0=params['include_mfcc0'],
                                               include_delta=params['include_delta'],
                                               include_acceleration=params['include_acceleration'],
-                                              feature_type=feature_type,
-                                              mfcc_params=params['mfcc'],
+                                              feature_type=params['type'],
+                                              mfcc_params=params,
                                               delta_params=params['mfcc_delta'],
                                               acceleration_params=params['mfcc_acceleration'])
             # Save
@@ -997,7 +996,8 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                                                       include_mfcc0=feature_params['include_mfcc0'],
                                                       include_delta=feature_params['include_delta'],
                                                       include_acceleration=feature_params['include_acceleration'],
-                                                      mfcc_params=feature_params['mfcc'],
+                                                        feature_type=params['type'],
+                                                      mfcc_params=feature_param,
                                                       delta_params=feature_params['mfcc_delta'],
                                                       acceleration_params=feature_params['mfcc_acceleration'],
                                                       statistics=False)['feat']
