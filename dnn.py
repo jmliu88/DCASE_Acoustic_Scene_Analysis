@@ -85,8 +85,10 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
 
     # create update expressions for training: SGD with momentum
     params = lasagne.layers.get_all_params(network, trainable=True)
-    updates = lasagne.updates.nesterov_momentum(
-        loss, params, learning_rate=0.01, momentum=0.9)
+    #updates = lasagne.updates.nesterov_momentum(
+    #    loss, params, learning_rate=0.01, momentum=0.9)
+    updates = lasagne.updates.adadelta(
+        loss, params, learning_rate=1)
 
     train = theano.function([input_var, target_var],loss , updates=updates)
     # create a loss expression for validation/testing

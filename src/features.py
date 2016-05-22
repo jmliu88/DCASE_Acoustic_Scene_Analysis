@@ -99,7 +99,7 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
     if feature_type == 'spectrum':
         feature_matrix = magnitude_spectrogram
     if feature_type == 'melspec':
-        feature_matrix = mel_spectrum
+        feature_matrix = librosa.logamplitude(mel_spectrum)
     if feature_type == 'mfcc':
         feature_matrix = mfcc
     if include_delta:
