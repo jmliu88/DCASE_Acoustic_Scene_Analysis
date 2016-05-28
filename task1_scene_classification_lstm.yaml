@@ -37,6 +37,7 @@ path:
 # Feature extraction
 # ==========================================================
 features:
+  type: mfcc
   fs: 44100
   win_length_seconds: 0.04
   hop_length_seconds: 0.02
@@ -45,14 +46,13 @@ features:
   include_delta: true           #
   include_acceleration: true    #
 
-  mfcc:
-    window: hamming_asymmetric  # [hann_asymmetric, hamming_asymmetric]
-    n_mfcc: 20                  # Number of MFCC coefficients
-    n_mels: 40                  # Number of MEL bands used
-    n_fft: 2048                 # FFT length
-    fmin: 0                     # Minimum frequency when constructing MEL bands
-    fmax: 22050                 # Maximum frequency when constructing MEL band
-    htk: false                  # Switch for HTK-styled MEL-frequency equation
+  window: hamming_asymmetric  # [hann_asymmetric, hamming_asymmetric]
+  n_mfcc: 20                  # Number of MFCC coefficients
+  n_mels: 40                  # Number of MEL bands used
+  n_fft: 2048                 # FFT length
+  fmin: 0                     # Minimum frequency when constructing MEL bands
+  fmax: 22050                 # Maximum frequency when constructing MEL band
+  htk: false                  # Switch for HTK-styled MEL-frequency equation
 
   mfcc_delta:
     width: 9
@@ -67,6 +67,12 @@ classifier:
   method: lstm                  # The system supports only gmm
   parameters: !!null            # Parameters are copied from classifier_parameters based on defined method
   overwrite: true
+
+batch:
+  win_length: 100
+  win_hop: 100
+  context_right: 7
+  context_right: 7
 
 classifier_parameters:
   lstm:

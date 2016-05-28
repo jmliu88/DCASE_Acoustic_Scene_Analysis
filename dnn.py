@@ -39,13 +39,14 @@ def calc_error(data_test, predict):
     return err , cost_val
 
 # create neural network
-def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hidden=.5, feat_dim=60):
+def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hidden=.5, feat_dim=60, return_layers=False):
     # feature_data: numpy.ndarray [shape=(t, feature vector length)]
     # depth: number of hidden layers
     # width: number of units in each hidden layer
     #feature_length = feature_data.shape[1]    # feature_data shape???
     network = lasagne.layers.InputLayer(shape=(None,feat_dim),
                                         input_var = input_var)
+    layers['in']=network
     if drop_input:
         network = lasagne.layers.dropout(network, p=drop_input)
 
@@ -55,12 +56,16 @@ def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hi
         network = lasagne.layers.DenseLayer(network,
                                             width,
                                             nonlinearity=nonlin)
+        layers['depth_%d'%_]=network
         if drop_hidden:
             network = lasagne.layers.dropout(network, p=drop_hidden)
 
     # output layer
     softmax = lasagne.nonlinearities.softmax
     network = lasagne.layers.DenseLayer(network, num_class, nonlinearity=softmax)
+    layers['out']=network
+    if return_layers:
+        return network, layers
     return network
 
 # train dnn
@@ -170,7 +175,6 @@ def do_classification(feature_data, predict, params):
     input feature_data
     return classification results
     '''
-    # ???
     x, _ = batch.make_batch(feature_data,15,5)
     decision = predict(x.reshape((x.shape[0],-1)))
     pred_label = np.argmax(np.sum(decision,axis=0), axis = -1)

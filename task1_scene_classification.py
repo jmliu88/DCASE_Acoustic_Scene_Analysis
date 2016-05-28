@@ -996,7 +996,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                                                       include_mfcc0=feature_params['include_mfcc0'],
                                                       include_delta=feature_params['include_delta'],
                                                       include_acceleration=feature_params['include_acceleration'],
-                                                        feature_type=params['type'],
+                                                      feature_type=params['type'],
                                                       mfcc_params=feature_param,
                                                       delta_params=feature_params['mfcc_delta'],
                                                       acceleration_params=feature_params['mfcc_acceleration'],
