@@ -17,7 +17,7 @@ general:
   development_dataset: TUTAcousticScenes_2016_DevelopmentSet
   challenge_dataset: TUTAcousticScenes_2016_EvaluationSet
 
-  overwrite: false # Overwrite previously stored data
+  overwrite: false              # Overwrite previously stored data
 
 # ==========================================================
 # Paths
@@ -25,7 +25,7 @@ general:
 path:
   data: data/
 
-  base: system/baseline_dcase2016_task1_lstm_avg/
+  base: system/dnn
   features: features/
   feature_normalizers: feature_normalizers/
   models: acoustic_models/
@@ -64,17 +64,15 @@ features:
 # Classifier
 # ==========================================================
 classifier:
-  method: lstm_average                  # The system supports only gmm
+  method: dnn                  # The system supports only gmm
   parameters: !!null            # Parameters are copied from classifier_parameters based on defined method
   overwrite: true
 
 classifier_parameters:
-  lstm_average:
-    n_layers: 2
-    n_hidden_blstm: 126
-    dropout_rate_dense: 0.5
-    n_dense: 3
-    n_hidden_dense: 125
-    n_class: 15
-    max_length: 100
-    feat_dim: 60
+  dnn:
+    depth: 3
+    width: 1024
+    num_class: 15
+    drop_input: 0.2
+    drop_hidden: 0.5
+    feat_dim: 900

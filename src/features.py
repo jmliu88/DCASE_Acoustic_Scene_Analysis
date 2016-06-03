@@ -7,7 +7,7 @@ import scipy
 
 
 def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include_delta=True,
-                       include_acceleration=True, mfcc_params=None, delta_params=None, acceleration_params=None):
+                       include_acceleration=True, feature_type = None, mfcc_params=None, delta_params=None, acceleration_params=None):
     """Feature extraction, MFCC based features
 
     Outputs features in dict, format:
@@ -85,6 +85,7 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
                                                    hop_length=mfcc_params['hop_length'],
                                                    center=True,
                                                    window=window))**2
+
     mel_basis = librosa.filters.mel(sr=fs,
                                     n_fft=mfcc_params['n_fft'],
                                     n_mels=mfcc_params['n_mels'],
@@ -93,9 +94,14 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
                                     htk=mfcc_params['htk'])
     mel_spectrum = numpy.dot(mel_basis, magnitude_spectrogram)
     mfcc = librosa.feature.mfcc(S=librosa.logamplitude(mel_spectrum))
-    
+
     # Collect the feature matrix
-    feature_matrix = mfcc
+    if feature_type == 'spectrum':
+        feature_matrix = magnitude_spectrogram
+    if feature_type == 'melspec':
+        feature_matrix = librosa.logamplitude(mel_spectrum)
+    if feature_type == 'mfcc':
+        feature_matrix = mfcc
     if include_delta:
         # Delta coefficients
         mfcc_delta = librosa.feature.delta(mfcc, **delta_params)

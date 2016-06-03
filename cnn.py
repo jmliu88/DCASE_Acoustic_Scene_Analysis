@@ -19,6 +19,9 @@ import batch
 import pdb
 from utils import *
 
+def reshape(x):
+    x =np.expand_dims(x, axis=1)
+    return x
 def calc_error(data_test, predict):
     ''' return error, cost on that set'''
 
@@ -27,7 +30,8 @@ def calc_error(data_test, predict):
     cost_val=0
     eps = 1e-10
     for (x,y_lab,_) in b:
-        decision=predict(x.reshape((x.shape[0],-1)).astype('float32')) + eps
+        x = reshape(x)
+        decision=predict(x) + eps
         pred_label= np.argmax(decision,axis=-1)
         y = onehot(y_lab)
 
@@ -39,40 +43,30 @@ def calc_error(data_test, predict):
     return err , cost_val
 
 # create neural network
-def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hidden=.5, feat_dim=60, return_layers=False):
+def build(input_var, type='residual', n=1, num_filters=8,num_class=10, feat_dim=60, max_length=100):
     # feature_data: numpy.ndarray [shape=(t, feature vector length)]
     # depth: number of hidden layers
     # width: number of units in each hidden layer
     #feature_length = feature_data.shape[1]    # feature_data shape???
-    network = lasagne.layers.InputLayer(shape=(None,feat_dim),
-                                        input_var = input_var)
-    layers['in']=network
-    if drop_input:
-        network = lasagne.layers.dropout(network, p=drop_input)
-
-    # create hidden layers and dropout
-    nonlin = lasagne.nonlinearities.rectify
-    for _ in range(depth):
-        network = lasagne.layers.DenseLayer(network,
-                                            width,
-                                            nonlinearity=nonlin)
-        layers['depth_%d'%_]=network
-        if drop_hidden:
-            network = lasagne.layers.dropout(network, p=drop_hidden)
-
-    # output layer
-    softmax = lasagne.nonlinearities.softmax
-    network = lasagne.layers.DenseLayer(network, num_class, nonlinearity=softmax)
-    layers['out']=network
-    if return_layers:
-        return network, layers
+    if type == 'vgg16':
+        import vgg16
+        layers = vgg16.build()
+    if type == 'residual':
+        import residual_network
+        network = residual_network.build_cnn(input_var, n=n, num_filters= num_filters, cudnn='no',num_class=num_class, feat_dim=feat_dim, max_length=max_length)
     return network
 
-def do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters):
+# train dnn
+def do_train(data, data_val, data_test,  **classifier_parameters):
+    '''
+    return ??
+    '''
+
+    batch_maker = batch.Batch(data, isShuffle = True, seg_window=100, seg_hop=5)
     num_epochs = 10000
     #num_epochs = 3
     # prepare theano variables for inputs and targets
-    input_var = T.matrix('inputs')
+    input_var = T.tensor4('inputs')
     target_var = T.imatrix('targets')  # ??
 
     network = build(input_var,**classifier_parameters)
@@ -84,8 +78,6 @@ def do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters):
 
     # create update expressions for training: SGD with momentum
     params = lasagne.layers.get_all_params(network, trainable=True)
-    #updates = lasagne.updates.nesterov_momentum(
-    #    loss, params, learning_rate=0.01, momentum=0.9)
     updates = lasagne.updates.adadelta(
         loss, params, learning_rate=1)
 
@@ -112,7 +104,8 @@ def do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters):
         start_time = time.time()
         cost_train = 0
         for _, (x ,y ,_) in enumerate(batch_maker):
-            x =x.reshape((x.shape[0], -1))
+            #import pdb; pdb.set_trace()
+            x = reshape(x)
             y=onehot(y)
 
             assert(not np.any(np.isnan(x)))
@@ -149,15 +142,6 @@ def do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters):
         epoch += 1
     return (classifier_parameters, model_params[best_epoch])
 
-# train dnn
-def do_train(data, data_val, data_test,  **classifier_parameters):
-    '''
-    return ??
-    '''
-
-    batch_maker = batch.Batch(data, isShuffle = True, seg_window=15, seg_hop=5)
-    do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters)
-
 
 
 def build_model(model_params):
@@ -178,7 +162,9 @@ def do_classification(feature_data, predict, params):
     input feature_data
     return classification results
     '''
-    x, _ = batch.make_batch(feature_data,15,5)
-    decision = predict(x.reshape((x.shape[0],-1)))
+    # ???
+    x, _ = batch.make_batch(feature_data,params['max_length'],5)
+    x = reshape(x)
+    decision = predict(x)
     pred_label = np.argmax(np.sum(decision,axis=0), axis = -1)
     return batch.labels[pred_label]

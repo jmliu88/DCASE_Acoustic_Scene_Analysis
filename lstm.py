@@ -26,6 +26,7 @@ def calc_error(b, predict):
     err = 0
     cost_val=0
     for (x,y,m) in b:
+        x = batch.make_context(x,15)
         y = framewise_onehot(y,x.shape[1])
         decision=predict(x.astype('float32'),m.astype('float32')) + eps
         pred_label= np.argmax(decision,axis=2)
@@ -58,9 +59,9 @@ def build(input_var,mask, dropout_rate_blstm = 0.2, dropout_rate_dense = 0.2, n_
         #layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length,n_hidden_blstm))
 
         l_forward_1 = lasagne.layers.LSTMLayer(
-            layer, num_units=n_hidden_blstm/2, name='Forward LSTM %d'%iLayer, mask_input=l_mask)
+            layer, num_units=n_hidden_blstm/2, grad_clipping=5, name='Forward LSTM %d'%iLayer, mask_input=l_mask)
         l_backward_1 = lasagne.layers.LSTMLayer(
-            layer, num_units=n_hidden_blstm/2, backwards=True, name='Backwards LSTM %d'%iLayer,
+            layer, num_units=n_hidden_blstm/2, grad_clipping=5, backwards=True, name='Backwards LSTM %d'%iLayer,
             mask_input=l_mask)
         layer = lasagne.layers.ConcatLayer(
             [l_forward_1, l_backward_1], axis=-1, name='Sum 1')
@@ -136,18 +137,19 @@ def do_train(data, data_val, data_test, **classifier_parameters):
 
     #err, cost_test = calc_error(data_val,predict)
     epoch = 0
-    no_best = 10
+    no_best = 70
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
     # TO REMOVE
     #model_params.append(lasagne.layers.get_all_param_values(nnet))
-    while epoch < 100:
+    while epoch < 10000:
 
         start_time = time.time()
         cost_train = 0
         for _, (x ,y ,m) in enumerate(batch_maker):
             x =x .astype('float32')
+            x = batch.make_context(x,15)
             m = np.ones_like(m)
             m=m.astype('float32')
             y = framewise_onehot(y, x.shape[1])
@@ -202,8 +204,9 @@ def build_model(params):
 
 
 def do_classification(feature_data, predict, params):
-    length = params['max_length']
-    x, m = batch.make_batch(feature_data,length,length/2)
+    length = params[0]['max_length']
+    x, m = batch.make_batch(feature_data,length,length)
+    x = batch.make_context(x,15)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
     decision = predict(x, m)
     pred_label = np.argmax(np.sum(decision,axis=(0,1)), axis = -1)
