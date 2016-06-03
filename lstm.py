@@ -26,6 +26,7 @@ def calc_error(b, predict):
     err = 0
     cost_val=0
     for (x,y,m) in b:
+        x = batch.make_context(x,15)
         y = framewise_onehot(y,x.shape[1])
         decision=predict(x.astype('float32'),m.astype('float32')) + eps
         pred_label= np.argmax(decision,axis=2)
@@ -148,6 +149,7 @@ def do_train(data, data_val, data_test, **classifier_parameters):
         cost_train = 0
         for _, (x ,y ,m) in enumerate(batch_maker):
             x =x .astype('float32')
+            x = batch.make_context(x,15)
             m = np.ones_like(m)
             m=m.astype('float32')
             y = framewise_onehot(y, x.shape[1])
@@ -203,7 +205,8 @@ def build_model(params):
 
 def do_classification(feature_data, predict, params):
     length = params[0]['max_length']
-    x, m = batch.make_batch(feature_data,length,length/2)
+    x, m = batch.make_batch(feature_data,length,length)
+    x = batch.make_context(x,15)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
     decision = predict(x, m)
     pred_label = np.argmax(np.sum(decision,axis=(0,1)), axis = -1)

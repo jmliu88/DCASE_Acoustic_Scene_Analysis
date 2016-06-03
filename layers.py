@@ -62,6 +62,7 @@ class AttentionLayer(lasagne.layers.Layer):
         # Perform softmax
         activation = T.exp(activation)
         activation /= activation.sum(axis=1).dimshuffle(0, 'x')
+        self.attention = activation
         # Weight steps
         weighted_input = input*activation.dimshuffle(0, 1, 'x')
         # Compute weighted average (summing because softmax is normed)

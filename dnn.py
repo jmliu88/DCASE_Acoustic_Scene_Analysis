@@ -68,13 +68,7 @@ def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hi
         return network, layers
     return network
 
-# train dnn
-def do_train(data, data_val, data_test,  **classifier_parameters):
-    '''
-    return ??
-    '''
-
-    batch_maker = batch.Batch(data, isShuffle = True, seg_window=15, seg_hop=5)
+def do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters):
     num_epochs = 10000
     #num_epochs = 3
     # prepare theano variables for inputs and targets
@@ -154,6 +148,15 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
             break
         epoch += 1
     return (classifier_parameters, model_params[best_epoch])
+
+# train dnn
+def do_train(data, data_val, data_test,  **classifier_parameters):
+    '''
+    return ??
+    '''
+
+    batch_maker = batch.Batch(data, isShuffle = True, seg_window=15, seg_hop=5)
+    do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters)
 
 
 
