@@ -872,7 +872,7 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
     # Fork len(fold) processes to process each fold respectively. The subprocess will be associated with diff gpus
     jobs = []
 
-    gpu_list = [0,1,2,3]
+    gpu_list = [4,1,2,3]
     for fold in dataset.folds(mode=dataset_evaluation_mode):
         p=Process(target=do_fold_train_partial, kwargs={'fold':fold, 'device':'gpu%d'%gpu_list[fold-1], 'logging':os.path.join(model_path,'log_%d'%fold)})
         jobs.append(p)
@@ -1156,7 +1156,8 @@ def do_system_evaluation(dataset, result_path, dataset_evaluation_mode='folds'):
                                                                  results['overall_accuracy'] * 100)+fold_values
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main(sys.argv))
-    except (ValueError, IOError) as e:
-        sys.exit(e)
+    main(sys.argv)
+    #try:
+    #    sys.exit(main(sys.argv))
+    #except (ValueError, IOError) as e:
+    #    sys.exit(e)

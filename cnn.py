@@ -25,7 +25,7 @@ def reshape(x):
 def calc_error(data_test, predict):
     ''' return error, cost on that set'''
 
-    b = batch.Batch(data_test, max_batchsize=5000, seg_window=15, seg_hop=5)
+    b = batch.Batch(data_test, max_batchsize=500, seg_window=100, seg_hop=100)
     err = 0
     cost_val=0
     eps = 1e-10
@@ -62,7 +62,7 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
     return ??
     '''
 
-    batch_maker = batch.Batch(data, isShuffle = True, seg_window=100, seg_hop=5)
+    batch_maker = batch.Batch(data, isShuffle = True, seg_window=100, seg_hop=20 ,max_batchsize=50)
     num_epochs = 10000
     #num_epochs = 3
     # prepare theano variables for inputs and targets
@@ -93,7 +93,7 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
     print("Starting training...")
     epoch = 0
     #no_best = 1
-    no_best = 70
+    no_best = 10
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
@@ -104,7 +104,6 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
         start_time = time.time()
         cost_train = 0
         for _, (x ,y ,_) in enumerate(batch_maker):
-            #import pdb; pdb.set_trace()
             x = reshape(x)
             y=onehot(y)
 
@@ -113,8 +112,8 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
             assert(not np.isnan(cost_train))
         cost_train = cost_train/ len(batch_maker.index_bkup)
         err_val, cost_val = calc_error(data_val,predict)
-
         err_test, cost_test = calc_error(data_test,predict)
+        #import pdb; pdb.set_trace()
             #cost_val, err_val = 0, 0
         #pdb.set_trace()
         end_time = time.time()
@@ -145,7 +144,7 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
 
 
 def build_model(model_params):
-    input_var = T.matrix('inputs')
+    input_var = T.tensor4('inputs')
 
     network = build(input_var, **model_params[0])
     lasagne.layers.set_all_param_values(network,model_params[1])
@@ -163,7 +162,8 @@ def do_classification(feature_data, predict, params):
     return classification results
     '''
     # ???
-    x, _ = batch.make_batch(feature_data,params['max_length'],5)
+    #import pdb; pdb.set_trace()
+    x, _ = batch.make_batch(feature_data,params[0]['max_length'],params[0]['max_length'])
     x = reshape(x)
     decision = predict(x)
     pred_label = np.argmax(np.sum(decision,axis=0), axis = -1)
