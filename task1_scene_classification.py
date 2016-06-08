@@ -24,7 +24,7 @@ import pdb
 __version_info__ = ('1', '0', '0')
 __version__ = '.'.join(__version_info__)
 
-model_bank = ['gmm','lstm','dnn','cnn', 'lstm_average', 'lstm_attention', 'ff_attention', 'ff_avg']
+model_bank = ['gmm','lstm','dnn','cnn', 'lstm_average', 'lstm_attention', 'ff_attention','class_attention', 'ff_avg']
 
 def main(argv):
     numpy.random.seed(123456)  # let's make randomization predictable
@@ -670,6 +670,7 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
         import lstm_attention
         import ff_attention
         import ff_avg
+        import class_attention
 
         if logging is not None:
             old_stdout = sys.stdout
@@ -781,6 +782,8 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, cl
                 model_container['models'] =lstm_attention.do_train(data, data_val, data_eval, **classifier_params)
             elif classifier_method == 'ff_attention':
                 model_container['models'] =ff_attention.do_train(data, data_val, data_eval, **classifier_params)
+            elif classifier_method == 'class_attention':
+                model_container['models'] =class_attention.do_train(data, data_val, data_eval, **classifier_params)
             elif classifier_method == 'ff_avg':
                 model_container['models'] =ff_avg.do_train(data, data_val, data_eval, **classifier_params)
                 ## add training log
@@ -938,6 +941,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
     import lstm_attention
     import ff_attention
     import ff_avg
+    import class_attention
 
     if classifier_method not in  model_bank:
         raise ValueError("Unknown classifier method ["+classifier_method+"]")
@@ -962,6 +966,8 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                     predict = lstm_attention.build_model( model_container['models'])
                 if classifier_method == 'ff_attention':
                     predict = ff_attention.build_model( model_container['models'])
+                if classifier_method == 'class_attention':
+                    predict = class_attention.build_model( model_container['models'])
                 if classifier_method == 'ff_avg':
                     predict =ff_avg.build_model( model_container['models'])
                 if classifier_method == 'dnn':
@@ -1016,6 +1022,8 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                     current_result = lstm_attention.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'ff_attention':
                     current_result = ff_attention.do_classification(feature_data,predict,model_container['models'])
+                elif classifier_method == 'class_attention':
+                    current_result = class_attention.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'ff_avg':
                     current_result =ff_avg.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'dnn':

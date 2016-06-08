@@ -83,7 +83,7 @@ def load_dataset():
 def ceildiv(a, b):
     return -(-a // b)
 
-def build_cnn(input_var=None, n=1, num_filters=8, cudnn='yes',num_class=10, feat_dim=60, max_length=100):
+def build_cnn(input_var=None, n=1, num_filters=8, cudnn='yes',num_class=10, n_dense=0, n_dense_hidden=64, feat_dim=60, max_length=100):
     import lasagne # For some odd reason it can't read the global import, please PR/Issue if you know why
     projection_type = 'B'
     # Setting up layers
@@ -280,10 +280,17 @@ def build_cnn(input_var=None, n=1, num_filters=8, cudnn='yes',num_class=10, feat
     l2_id = res_block(l2_bs, increase_dim=True)
 
     l3_bs = blockstack(l2_id, n=n)
+    network = l3_bs
 
+    # Fc layers for better classification:
+    for _ in range(n_dense):
+        network = lasagne.layers.DenseLayer(
+            network,
+            num_units=n_dense_hidden,
+            nonlinearity=lasagne.nonlinearities.leaky)
     # And, finally, the 10-unit output layer:
     network = lasagne.layers.DenseLayer(
-            l3_bs,
+            network,
             num_units=num_class,
             nonlinearity=lasagne.nonlinearities.softmax)
 

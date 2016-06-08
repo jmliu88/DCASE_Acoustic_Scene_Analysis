@@ -101,49 +101,56 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
     #model_params.append(lasagne.layers.get_all_param_values(nnet))
     while epoch < num_epochs:
 
-        start_time = time.time()
-        cost_train = 0
-        for _, (x ,y ,_) in enumerate(batch_maker):
-            x = reshape(x)
-            y=onehot(y)
+        try:
+            start_time = time.time()
+            cost_train = 0
+            for _, (x ,y ,_) in enumerate(batch_maker):
+                x = reshape(x)
+                y=onehot(y)
 
-            assert(not np.any(np.isnan(x)))
-            cost_train+= train(x, y) *x .shape[0]#*x .shape[1]
-            assert(not np.isnan(cost_train))
-        cost_train = cost_train/ len(batch_maker.index_bkup)
-        err_val, cost_val = calc_error(data_val,predict)
-        err_test, cost_test = calc_error(data_test,predict)
-        #import pdb; pdb.set_trace()
-            #cost_val, err_val = 0, 0
-        #pdb.set_trace()
-        end_time = time.time()
+                assert(not np.any(np.isnan(x)))
+                cost_train+= train(x, y) *x .shape[0]#*x .shape[1]
+                assert(not np.isnan(cost_train))
+            cost_train = cost_train/ len(batch_maker.index_bkup)
+            err_val, cost_val = calc_error(data_val,predict)
+            err_test, cost_test = calc_error(data_test,predict)
+            #import pdb; pdb.set_trace()
+                #cost_val, err_val = 0, 0
+            #pdb.set_trace()
+            end_time = time.time()
 
-        is_better = False
-        if cost_val < best_cost:
-            best_cost =cost_val
-            best_epoch = epoch
-            is_better = True
+            is_better = False
+            if cost_val < best_cost:
+                best_cost =cost_val
+                best_epoch = epoch
+                is_better = True
 
-        if is_better:
-            print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}, New best.".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
-        else:
-            print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
+            if is_better:
+                print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}, New best.".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
+            else:
+                print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
 
-        sys.stdout.flush()
-        model_params.append(lasagne.layers.get_all_param_values(network))
+            sys.stdout.flush()
+            model_params.append(lasagne.layers.get_all_param_values(network))
         #check_path('dnn')
         #save_data('dnn/epoch_{}.autosave'.format(epoch), (classifier_parameters, model_params[best_epoch]))
         #savename = os.path.join(modelDir,'epoch_{}.npz'.format(epoch))
         #files.save_model(savename,structureDic,lasagne.layers.get_all_param_values(nnet))
-        if epoch - best_epoch >= no_best:
-            ## Early stoping
-            break
-        epoch += 1
+            if epoch - best_epoch >= no_best:
+                ## Early stoping
+                break
+            epoch += 1
+        except:
+            if best_epoch == 0:
+                return (classifier_parameters, model_params[-1])
+            else:
+                return (classifier_parameters, model_params[best_epoch])
+
     return (classifier_parameters, model_params[best_epoch])
 
 
 
-def build_model(model_params):
+def build_model(model_params, return_model=False):
     input_var = T.tensor4('inputs')
 
     network = build(input_var, **model_params[0])
@@ -152,6 +159,8 @@ def build_model(model_params):
     prediction = lasagne.layers.get_output(network, deterministic=True)
 
     predict = theano.function([input_var], prediction)
+    if return_model:
+        return predict, network
 
     return predict
 
