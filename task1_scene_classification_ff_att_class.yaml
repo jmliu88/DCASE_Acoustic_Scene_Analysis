@@ -8,7 +8,7 @@ flow:
   train_system: true
   test_system: true
   evaluate_system: true
-  train_system_parallel: false
+  train_system_parallel: true
 
 # ==========================================================
 # General
@@ -70,7 +70,7 @@ classifier:
 
 classifier_parameters:
   class_attention:
-    n_layers_pre: 1
+    n_layers_pre: 0
     n_hidden_pre: 900
     dropout_rate_pre: 0.2
     n_dense: 5

@@ -48,7 +48,7 @@ features:
 
   window: hamming_asymmetric  # [hann_asymmetric, hamming_asymmetric]
   n_mfcc: 20                  # Number of MFCC coefficients
-  n_mels: 60                  # Number of MEL bands used
+  n_mels: 100                  # Number of MEL bands used
   n_fft: 2048                 # FFT length
   fmin: 0                     # Minimum frequency when constructing MEL bands
   fmax: 10000                 # Maximum frequency when constructing MEL band
@@ -71,8 +71,8 @@ classifier:
 classifier_parameters:
   cnn:
     type: residual
-    n: 3
+    n: 5
     num_filters: 64
     max_length: 100
-    feat_dim: 60
+    feat_dim: 100
     num_class: 15

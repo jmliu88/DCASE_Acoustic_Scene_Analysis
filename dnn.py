@@ -46,7 +46,7 @@ def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hi
     #feature_length = feature_data.shape[1]    # feature_data shape???
     network = lasagne.layers.InputLayer(shape=(None,feat_dim),
                                         input_var = input_var)
-    layers['in']=network
+    layers={'in':network}
     if drop_input:
         network = lasagne.layers.dropout(network, p=drop_input)
 

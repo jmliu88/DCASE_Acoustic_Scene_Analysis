@@ -5,10 +5,10 @@ flow:
   initialize: true
   extract_features: true
   feature_normalizer: true
-  train_system: false
+  train_system: true
   test_system: true
   evaluate_system: true
-  train_system_parallel: false
+  train_system_parallel: true
 
 # ==========================================================
 # General
@@ -45,14 +45,14 @@ features:
   include_delta: true           #
   include_acceleration: true    #
 
-  mfcc:
-    window: hamming_asymmetric  # [hann_asymmetric, hamming_asymmetric]
-    n_mfcc: 13                  # Number of MFCC coefficients
-    n_mels: 40                  # Number of MEL bands used
-    n_fft: 2048                 # FFT length
-    fmin: 0                     # Minimum frequency when constructing MEL bands
-    fmax: 10000                 # Maximum frequency when constructing MEL band
-    htk: false                  # Switch for HTK-styled MEL-frequency equation
+  type: mfcc
+  window: hamming_asymmetric  # [hann_asymmetric, hamming_asymmetric]
+  n_mfcc: 13                  # Number of MFCC coefficients
+  n_mels: 40                  # Number of MEL bands used
+  n_fft: 2048                 # FFT length
+  fmin: 0                     # Minimum frequency when constructing MEL bands
+  fmax: 10000                 # Maximum frequency when constructing MEL band
+  htk: false                  # Switch for HTK-styled MEL-frequency equation
 
   mfcc_delta:
     width: 9
@@ -70,8 +70,8 @@ classifier:
 
 classifier_parameters:
   dnn:
-    depth: 3
-    width: 1024
+    depth: 6
+    width: 512
     num_class: 15
     drop_input: 0.2
     drop_hidden: 0.5
