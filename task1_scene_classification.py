@@ -997,6 +997,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
     # Check that target path exists, create if not
     check_path(result_path)
 
+    current_time = datetime.datetime.now().strftime("%I:%M-%m%d")
     for fold in dataset.folds(mode=dataset_evaluation_mode):
         current_result_file = get_result_filename(fold=fold, path=result_path)
         if not os.path.isfile(current_result_file) or overwrite:
@@ -1094,7 +1095,6 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                     raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
                 # Store the result
-                current_time = datetime.datetime.now().strftime("%I:%M-%m%d")
                 results.append((dataset.absolute_to_relative(item['file']), current_result))
                 save_data(os.path.join(result_path,audio_filename+current_time),prediciton)
 
