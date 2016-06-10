@@ -1094,14 +1094,16 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                     raise ValueError("Unknown classifier method ["+classifier_method+"]")
 
                 # Store the result
+                current_time = datetime.datetime.now().strftime("%I:%M-%m%d")
                 results.append((dataset.absolute_to_relative(item['file']), current_result))
-                save_data(os.path.join(result_path,audio_filename+datetime.datetime.now().strftime("%I:%M-%m%d")),prediciton)
+                save_data(os.path.join(result_path,audio_filename+current_time),prediciton)
 
             # Save testing results
             with open(current_result_file, 'wt') as f:
                 writer = csv.writer(f, delimiter='\t')
                 for result_item in results:
                     writer.writerow(result_item)
+            os.system('copy %s %s'%(current_result_file,current_result_file+current_time))
 
 
 def do_classification_gmm(feature_data, model_container):

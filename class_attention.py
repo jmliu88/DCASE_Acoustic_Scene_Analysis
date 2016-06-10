@@ -128,7 +128,7 @@ def do_train(data, data_val, data_test, **classifier_parameters):
 
     #err, cost_test = calc_error(data_val,predict)
     epoch = 0
-    no_best = 70
+    no_best = 50
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
