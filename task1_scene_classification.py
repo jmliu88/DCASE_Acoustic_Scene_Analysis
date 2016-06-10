@@ -16,6 +16,7 @@ import csv
 import argparse
 import textwrap
 import copy
+import datetime
 
 from sklearn import mixture
 import inspect
@@ -838,6 +839,7 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, fe
 
             # Save models
             save_data(current_model_file, model_container)
+            save_data(current_model_file+datetime.datetime.now().strftime("%I:%M-%m%d"), model_container)
         if logging is not None:
             sys.stdout = old_stdout
             log_file.close()
@@ -1080,7 +1082,8 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 elif classifier_method == 'ff_attention':
                     current_result = ff_attention.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'class_attention':
-                    current_result = class_attention.do_classification(feature_data,predict,model_container['models'])
+                    decision = class_attention.do_classification(feature_data,predict,model_container['models'])
+                    current_result = class_attention.postprocess(decision )
                 elif classifier_method == 'ff_avg':
                     current_result =ff_avg.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'dnn':
@@ -1092,6 +1095,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
 
                 # Store the result
                 results.append((dataset.absolute_to_relative(item['file']), current_result))
+                save_data(os.path.join(result_path,audio_filename+datetime.datetime.now().strftime("%I:%M-%m%d")),prediciton)
 
             # Save testing results
             with open(current_result_file, 'wt') as f:

@@ -204,9 +204,12 @@ def build_model(params, return_layers=False):
 
 def do_classification(feature_data, predict, params):
     length = params[0]['max_length']
-    x, m = batch.make_batch(feature_data,length,length)
+    x, m = batch.make_batch(feature_data,length,length/2)
     x=batch.make_context(x,15)
     #decision = predict(np.expand_dims(feature_data,axis=0).astype('float32'), np.ones(shape=(1,feature_data.shape[0])))
     decision = predict(x)
+    return decision
+
+def postprocess(decision):
     pred_label = np.argmax(np.sum(decision,axis=0), axis = -1)
     return batch.labels[pred_label]
