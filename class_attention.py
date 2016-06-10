@@ -132,8 +132,7 @@ def do_train(data, data_val, data_test, **classifier_parameters):
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
-    # TO REMOVE
-    #model_params.append(lasagne.layers.get_all_param_values(network))
+
     while epoch < 500:
 
         start_time = time.time()
