@@ -93,7 +93,8 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
                                     fmax=mfcc_params['fmax'],
                                     htk=mfcc_params['htk'])
     mel_spectrum = numpy.dot(mel_basis, magnitude_spectrogram)
-    mfcc = librosa.feature.mfcc(S=librosa.logamplitude(mel_spectrum))
+    mfcc = librosa.feature.mfcc(S=librosa.logamplitude(mel_spectrum),
+                                    n_mfcc=mfcc_params['n_mfcc'])
 
     # Collect the feature matrix
     if feature_type == 'spectrum':

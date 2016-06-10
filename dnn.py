@@ -70,7 +70,7 @@ def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hi
 
 def do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters):
     num_epochs = 10000
-    #num_epochs = 3
+    #num_epochs = 2
     # prepare theano variables for inputs and targets
     input_var = T.matrix('inputs')
     target_var = T.imatrix('targets')  # ??
@@ -101,7 +101,7 @@ def do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters):
     print("Starting training...")
     epoch = 0
     #no_best = 1
-    no_best = 70
+    no_best = 50
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
@@ -156,7 +156,8 @@ def do_train(data, data_val, data_test,  **classifier_parameters):
     '''
 
     batch_maker = batch.Batch(data, isShuffle = True, seg_window=15, seg_hop=5)
-    do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters)
+    return do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters)
+
 
 
 

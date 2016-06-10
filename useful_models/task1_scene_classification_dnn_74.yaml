@@ -65,6 +65,10 @@ features:
 # ==========================================================
 classifier:
   method: dnn                  # The system supports only gmm
+
+  audio_error_handling:         # handling audio errors (temporary microphone failure and radio signal interferences from mobile phones)
+    clean_data: false           # exclude audio errors from training audio
+
   parameters: !!null            # Parameters are copied from classifier_parameters based on defined method
   overwrite: true
 
@@ -76,3 +80,10 @@ classifier_parameters:
     drop_input: 0.2
     drop_hidden: 0.5
     feat_dim: 900
+
+# ==========================================================
+# Recognizer
+# ==========================================================
+recognizer:
+  audio_error_handling:         # Handling audio errors (temporary microphone failure and radio signal interferences from mobile phones)
+    clean_data: false           # Exclude audio errors from test audio
