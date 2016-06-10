@@ -1095,7 +1095,7 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
 
                 # Store the result
                 results.append((dataset.absolute_to_relative(item['file']), current_result))
-                save_data(os.path.join(result_path,audio_filename+current_time),prediciton)
+                save_data(os.path.join(result_path,os.path.basename(feature_filename)+current_time),prediciton)
 
             # Save testing results
             with open(current_result_file, 'wt') as f:
