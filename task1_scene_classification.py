@@ -835,7 +835,6 @@ def do_fold_train(dataset, model_path, feature_normalizer_path, feature_path, fe
                 model_container['models'] = cnn.do_train(data, data_val, data_eval, **classifier_params)
             else:
                 raise ValueError("Unknown classifier method ["+classifier_method+"]")
-            import pdb; pdb.set_trace()
 
             # Save models
             save_data(current_model_file, model_container)
