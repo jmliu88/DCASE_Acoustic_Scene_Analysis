@@ -56,7 +56,10 @@ def build(input_var, dropout_rate_dense = 0.2, dropout_rate_pre = 0.2, n_layers_
         layer = lasagne.layers.DenseLayer(layer, num_units=n_hidden_pre, nonlinearity = lasagne.nonlinearities.leaky_rectify,W = lasagne.init.Orthogonal(np.sqrt(2/(1+0.01**2))),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
         layers['dense_pre_%d'%iLayer] = layer
 
-    layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length , n_hidden_pre))
+    if n_layers_pre:
+        layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length , n_hidden_pre))
+    else:
+        layer = lasagne.layers.ReshapeLayer(layer , (-1 ,max_length , n_hidden_pre))
     attention_layers = []
     att_class_logit = []
     for i_class in range(n_class):
