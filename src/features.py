@@ -103,16 +103,17 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
         feature_matrix = librosa.logamplitude(mel_spectrum)
     if feature_type == 'mfcc':
         feature_matrix = mfcc
+        feature = feature_matrix
     if include_delta:
         # Delta coefficients
-        mfcc_delta = librosa.feature.delta(mfcc, **delta_params)
+        mfcc_delta = librosa.feature.delta(feature, **delta_params)
 
         # Add Delta Coefficients to feature matrix
         feature_matrix = numpy.vstack((feature_matrix, mfcc_delta))
 
     if include_acceleration:
         # Acceleration coefficients (aka delta)
-        mfcc_delta2 = librosa.feature.delta(mfcc, order=2, **acceleration_params)
+        mfcc_delta2 = librosa.feature.delta(feature, order=2, **acceleration_params)
 
         # Add Acceleration Coefficients to feature matrix
         feature_matrix = numpy.vstack((feature_matrix, mfcc_delta2))
