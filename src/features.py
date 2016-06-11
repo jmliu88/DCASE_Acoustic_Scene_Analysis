@@ -140,6 +140,12 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
             'feat': feature_matrix}
 
 
+class FeatureNormalizerDummy(object):
+    def __init__(self, feature_matrix=None):
+        pass
+    def normalize(self, feature_matrix):
+        return feature_matrix
+
 class FeatureNormalizer(object):
     """Feature normalizer class
 
