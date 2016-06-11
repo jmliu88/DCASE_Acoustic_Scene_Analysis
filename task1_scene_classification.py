@@ -132,6 +132,16 @@ def main(argv):
                                  overwrite=params['general']['overwrite'])
 
         foot()
+    else:
+        section_header('Feature normalizer')
+
+        do_feature_normalization_dummy(dataset=dataset,
+                                 feature_normalizer_path=params['path']['feature_normalizers'],
+                                 feature_path=params['path']['features'],
+                                 dataset_evaluation_mode=dataset_evaluation_mode,
+                                 overwrite=params['general']['overwrite'])
+
+        foot()
 
     # System training
     # ==================================================
@@ -603,6 +613,54 @@ def do_feature_normalization(dataset, feature_normalizer_path, feature_path, dat
             # Calculate normalization factors
             normalizer.finalize()
 
+            # Save
+            save_data(current_normalizer_file, normalizer)
+
+def do_feature_normalization_dummy(dataset, feature_normalizer_path, feature_path, dataset_evaluation_mode='folds', overwrite=False):
+    """Feature normalization dummy
+
+    Save a dummy object which imitates featureNormalizer
+
+    Parameters
+    ----------
+    dataset : class
+        dataset class
+
+    feature_normalizer_path : str
+        path where the feature normalizers are saved.
+
+    feature_path : str
+        path where the features are saved.
+
+    dataset_evaluation_mode : str ['folds', 'full']
+        evaluation mode, 'full' all material available is considered to belong to one fold.
+        (Default value='folds')
+
+    overwrite : bool
+        overwrite existing normalizers
+        (Default value=False)
+
+    Returns
+    -------
+    nothing
+
+    Raises
+    -------
+    IOError
+        Feature file not found.
+
+    """
+
+    # Check that target path exists, create if not
+    check_path(feature_normalizer_path)
+
+    for fold in dataset.folds(mode=dataset_evaluation_mode):
+        current_normalizer_file = get_feature_normalizer_filename(fold=fold, path=feature_normalizer_path)
+
+        if not os.path.isfile(current_normalizer_file) or overwrite:
+            # Initialize statistics
+            file_count = len(dataset.train(fold))
+            normalizer = FeatureNormalizerDummy()
             # Save
             save_data(current_normalizer_file, normalizer)
 
