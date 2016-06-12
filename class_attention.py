@@ -136,51 +136,56 @@ def do_train(data, data_val, data_test, **classifier_parameters):
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
+    try:
+        while epoch < 500:
 
-    while epoch < 500:
+            start_time = time.time()
+            cost_train = 0
+            for _, (x ,y ,m) in enumerate(batch_maker):
+                x=batch.make_context(x,15)
+                x =x .astype('float32')
+                m=m.astype('float32')
+                y = onehot(y)
+                y=y.astype('float32')
 
-        start_time = time.time()
-        cost_train = 0
-        for _, (x ,y ,m) in enumerate(batch_maker):
-            x=batch.make_context(x,15)
-            x =x .astype('float32')
-            m=m.astype('float32')
-            y = onehot(y)
-            y=y.astype('float32')
+                assert(not np.any(np.isnan(x)))
+                cost_train+= train(x, y) *x .shape[0]#*x .shape[1]
+                assert(not np.isnan(cost_train))
+            cost_train = cost_train/ len(batch_maker.index_bkup)
+            err_val, cost_val = calc_error(b_v,predict)
 
-            assert(not np.any(np.isnan(x)))
-            cost_train+= train(x, y) *x .shape[0]#*x .shape[1]
-            assert(not np.isnan(cost_train))
-        cost_train = cost_train/ len(batch_maker.index_bkup)
-        err_val, cost_val = calc_error(b_v,predict)
+            err_test, cost_test = calc_error(b_t,predict)
+                #cost_val, err_val = 0, 0
+            #pdb.set_trace()
+            end_time = time.time()
 
-        err_test, cost_test = calc_error(b_t,predict)
-            #cost_val, err_val = 0, 0
-        #pdb.set_trace()
-        end_time = time.time()
+            is_better = False
+            if cost_val < best_cost:
+                best_cost =cost_val
+                best_epoch = epoch
+                is_better = True
 
-        is_better = False
-        if cost_val < best_cost:
-            best_cost =cost_val
-            best_epoch = epoch
-            is_better = True
+            if is_better:
+                print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}, New best.".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
+            else:
+                print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
 
-        if is_better:
-            print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}, New best.".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
+            sys.stdout.flush()
+            model_params.append(lasagne.layers.get_all_param_values(network))
+            #check_path('dnn')
+            #save_data('dnn/epoch_{}.autosave'.format(epoch), (classifier_parameters, model_params[best_epoch]))
+            #savename = os.path.join(modelDir,'epoch_{}.npz'.format(epoch))
+            #files.save_model(savename,structureDic,lasagne.layers.get_all_param_values(network))
+            if epoch - best_epoch >= no_best:
+                ## Early stoping
+                print "Training stops, best epoch is {}".format(best_epoch)
+                break
+            epoch += 1
+    except:
+        if best_epoch == 0:
+            return (classifier_parameters, model_params[-1])
         else:
-            print "epoch: {} ({}s), training cost: {}, val cost: {}, val err: {}, test cost {}, test err: {}".format(epoch, end_time-start_time, cost_train, cost_val, err_val, cost_test, err_test)
-
-        sys.stdout.flush()
-        model_params.append(lasagne.layers.get_all_param_values(network))
-        #check_path('dnn')
-        #save_data('dnn/epoch_{}.autosave'.format(epoch), (classifier_parameters, model_params[best_epoch]))
-        #savename = os.path.join(modelDir,'epoch_{}.npz'.format(epoch))
-        #files.save_model(savename,structureDic,lasagne.layers.get_all_param_values(network))
-        if epoch - best_epoch >= no_best:
-            ## Early stoping
-            print "Training stops, best epoch is {}".format(best_epoch)
-            break
-        epoch += 1
+            return (classifier_parameters, model_params[best_epoch])
     return (classifier_parameters, model_params[best_epoch])
 def validate(data,data_val, predict):
     err_val, cost_val = calc_error(data_val,predict)
