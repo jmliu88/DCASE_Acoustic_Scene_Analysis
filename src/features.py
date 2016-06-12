@@ -103,7 +103,7 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
         feature_matrix = librosa.logamplitude(mel_spectrum)
     if feature_type == 'mfcc':
         feature_matrix = mfcc
-        feature = feature_matrix
+    feature = feature_matrix
     if include_delta:
         # Delta coefficients
         mfcc_delta = librosa.feature.delta(feature, **delta_params)
