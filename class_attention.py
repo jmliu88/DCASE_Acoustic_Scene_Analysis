@@ -66,8 +66,9 @@ def build(input_var, dropout_rate_dense = 0.2, dropout_rate_pre = 0.2, n_layers_
         att_representation = AttentionLayer(layer)
         attention_layers.append(att_representation)
         for iLayer in range(n_dense):
-            att_representation= lasagne.layers.DropoutLayer(att_representation,p = dropout_rate_dense)
+            #att_representation= lasagne.layers.DropoutLayer(att_representation,p = dropout_rate_dense)
             att_representation= lasagne.layers.DenseLayer(att_representation, num_units= n_hidden_dense, nonlinearity = lasagne.nonlinearities.leaky_rectify,W = lasagne.init.Orthogonal(np.sqrt(2/(1+0.01**2))),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
+            att_representation= lasagne.layers.BatchNormLayer(att_representation) ## W_{yh_back}+b
             #layer = lasagne.layers.DenseLayer(layer, num_units= n_hidden_dense, nonlinearity = lasagne.nonlinearities.tanh,W = lasagne.init.Orthogonal(np.sqrt(2/(1+0.01**2))),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
             layers['dense_%d_%d'%(iLayer,i_class)] =att_representation
         att_representation = lasagne.layers.DenseLayer(att_representation,num_units=1,nonlinearity=None)
