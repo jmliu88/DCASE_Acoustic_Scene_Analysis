@@ -1,0 +1,7 @@
+type:
+  majority_vote
+models:
+  models_yaml/task1_scene_classification_dnn_74.yaml
+  models_yaml/task1_scene_classification_dnn_74.yaml
+  models_yaml/task1_scene_classification_dnn_74.yaml
+
