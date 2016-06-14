@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# dnn classifier
+# cnn classifier
 import lasagne
 import theano
 import theano.tensor as T
