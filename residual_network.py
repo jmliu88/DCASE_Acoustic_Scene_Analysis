@@ -83,7 +83,7 @@ def load_dataset():
 def ceildiv(a, b):
     return -(-a // b)
 
-def build_cnn(input_var=None, n=1, num_filters=8, cudnn='yes',num_class=10, n_dense=0, n_dense_hidden=64, feat_dim=60, max_length=100):
+def build_cnn(input_var=None, n=1, n_channel =1, num_filters=8, cudnn='yes',num_class=10, n_dense=0, n_dense_hidden=64, feat_dim=60, max_length=100):
     import lasagne # For some odd reason it can't read the global import, please PR/Issue if you know why
     projection_type = 'B'
     # Setting up layers
@@ -264,7 +264,7 @@ def build_cnn(input_var=None, n=1, num_filters=8, cudnn='yes',num_class=10, n_de
         return l
 
     # Building the network
-    l_in = lasagne.layers.InputLayer(shape=(None, 1, max_length, feat_dim),
+    l_in = lasagne.layers.InputLayer(shape=(None, n_channel, max_length, feat_dim),
                                         input_var=input_var)
     # First layer! just a plain convLayer
     l1 = conv(l_in, num_filters=num_filters, stride=(1, 1),

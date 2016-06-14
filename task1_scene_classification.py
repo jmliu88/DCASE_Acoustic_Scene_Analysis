@@ -1207,6 +1207,56 @@ def do_classification_gmm(feature_data, model_container):
     return model_container['models'].keys()[classification_result_id]
 
 
+def do_gether_results(dataset, result_path, dataset_evaluation_mode='folds'):
+    """ Return results
+
+    Parameters
+    ----------
+    dataset : class
+        dataset class
+
+    result_path : str
+        path where the results are saved.
+
+    dataset_evaluation_mode : str ['folds', 'full']
+        evaluation mode, 'full' all material available is considered to belong to one fold.
+        (Default value='folds')
+
+    Returns
+    -------
+    results
+
+    Raises
+    -------
+    IOError
+        Result file not found
+
+    """
+
+    dcase2016_scene_metric = DCASE2016_SceneClassification_Metrics(class_list=dataset.scene_labels)
+    results_fold = []
+    for fold in dataset.folds(mode=dataset_evaluation_mode):
+        dcase2016_scene_metric_fold = DCASE2016_SceneClassification_Metrics(class_list=dataset.scene_labels)
+        results = []
+        result_filename = get_result_filename(fold=fold, path=result_path)
+
+        if os.path.isfile(result_filename):
+            with open(result_filename, 'rt') as f:
+                for row in csv.reader(f, delimiter='\t'):
+                    results.append(row)
+        else:
+            raise IOError("Result file not found [%s]" % result_filename)
+
+        y_true = []
+        y_pred = []
+        for result in results:
+            y_true.append(dataset.file_meta(result[0])[0]['scene_label'])
+            y_pred.append(result[1])
+        dcase2016_scene_metric.evaluate(system_output=y_pred, annotated_ground_truth=y_true)
+        dcase2016_scene_metric_fold.evaluate(system_output=y_pred, annotated_ground_truth=y_true)
+        results_fold.append(dcase2016_scene_metric_fold.results())
+    results = dcase2016_scene_metric.results()
+    return results
 def do_system_evaluation(dataset, result_path, dataset_evaluation_mode='folds'):
     """System evaluation. Testing outputs are collected and evaluated. Evaluation results are printed.
 
