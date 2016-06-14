@@ -1254,7 +1254,7 @@ def do_gether_results(dataset, result_path, dataset_evaluation_mode='folds'):
         dcase2016_scene_metric_fold.evaluate(system_output=y_pred, annotated_ground_truth=y_true)
         results_fold.append(dcase2016_scene_metric_fold.results())
     results = dcase2016_scene_metric.results()
-    return results
+    return y_true,y_pred,results
 def do_system_evaluation(dataset, result_path, dataset_evaluation_mode='folds'):
     """System evaluation. Testing outputs are collected and evaluated. Evaluation results are printed.
 
