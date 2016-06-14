@@ -1147,6 +1147,8 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                     current_result =ff_avg.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'dnn':
                     current_result = dnn.do_classification(feature_data,predict,model_container['models'])
+                    decision = dnn.do_classification(feature_data,predict,model_container['models'])
+                    current_result  = dnn.postprocess(decision)
                 elif classifier_method == 'cnn':
                     current_result = cnn.do_classification(feature_data,predict,model_container['models'])
                 else:

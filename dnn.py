@@ -181,5 +181,8 @@ def do_classification(feature_data, predict, params):
     '''
     x, _ = batch.make_batch(feature_data,15,5)
     decision = predict(x.reshape((x.shape[0],-1)))
+    return decision
+
+def postprocess(decision):
     pred_label = np.argmax(np.sum(decision,axis=0), axis = -1)
     return batch.labels[pred_label]
