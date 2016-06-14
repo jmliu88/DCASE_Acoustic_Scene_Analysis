@@ -1,7 +1,7 @@
 type:
   majority_vote
 models:
-  models_yaml/task1_scene_classification_dnn_74.yaml
-  models_yaml/task1_scene_classification_dnn_74.yaml
-  models_yaml/task1_scene_classification_dnn_74.yaml
+  ff_att_class_13D_8kHz_melspec.yaml
+  ff_att_class_13D_8kHz_melspec.yaml
+  ff_att_class_13D_8kHz_melspec.yaml
 
