@@ -76,3 +76,5 @@ classifier_parameters:
     drop_input: 0.2
     drop_hidden: 0.5
     feat_dim: 900
+    note: 1
+    batch_norm: false

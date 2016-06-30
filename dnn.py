@@ -39,7 +39,7 @@ def calc_error(data_test, predict):
     return err , cost_val
 
 # create neural network
-def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hidden=.5, feat_dim=60, return_layers=False):
+def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hidden=.5, feat_dim=60, note='',batch_norm=False, return_layers=False):
     # feature_data: numpy.ndarray [shape=(t, feature vector length)]
     # depth: number of hidden layers
     # width: number of units in each hidden layer
@@ -53,6 +53,9 @@ def build(input_var, depth=3, width = 1024, num_class=15, drop_input=.2, drop_hi
     # create hidden layers and dropout
     nonlin = lasagne.nonlinearities.rectify
     for _ in range(depth):
+        if batch_norm:
+            import pdb; pdb.set_trace()
+            network = lasagne.layers.BatchNormLayer(network)
         network = lasagne.layers.DenseLayer(network,
                                             width,
                                             nonlinearity=nonlin)
@@ -76,6 +79,7 @@ def do_train_batch(batch_maker, data_val, data_test,  **classifier_parameters):
     target_var = T.imatrix('targets')  # ??
 
     network = build(input_var,**classifier_parameters)
+    pdb.set_trace()
 
     # create a loss expression for training
     prediction = lasagne.layers.get_output(network)

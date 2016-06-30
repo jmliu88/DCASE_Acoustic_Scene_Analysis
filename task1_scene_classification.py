@@ -1146,7 +1146,6 @@ def do_system_testing(dataset, result_path, feature_path, model_path, feature_pa
                 elif classifier_method == 'ff_avg':
                     current_result =ff_avg.do_classification(feature_data,predict,model_container['models'])
                 elif classifier_method == 'dnn':
-                    current_result = dnn.do_classification(feature_data,predict,model_container['models'])
                     decision = dnn.do_classification(feature_data,predict,model_container['models'])
                     current_result  = dnn.postprocess(decision)
                 elif classifier_method == 'cnn':
@@ -1335,6 +1334,7 @@ def do_system_evaluation(dataset, result_path, dataset_evaluation_mode='folds'):
                                                                  results['Nref'],
                                                                  results['Nsys'],
                                                                  results['overall_accuracy'] * 100)+fold_values
+    return results
 
 if __name__ == "__main__":
     main(sys.argv)

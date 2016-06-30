@@ -36,7 +36,7 @@ def calc_error(b, predict):
     cost_val = cost_val /len(b.index_bkup)
     return err , cost_val
 
-def build(input_var, dropout_rate_dense = 0.2, dropout_rate_pre = 0.2, n_layers_pre = 3, n_hidden_pre = 125, n_dense = 3, n_hidden_dense= 256, n_attention=10, n_class = 10, max_length = 1000, feat_dim = 60, return_layers = False):
+def build(input_var, dropout_rate_dense = 0.2, dropout_rate_pre = 0.2, n_layers_pre = 3, n_hidden_pre = 125, n_dense = 3, n_hidden_dense= 256, n_attention=10, n_class = 10, max_length = 1000, feat_dim = 60, return_layers = False, batchnorm = False):
 
     l_in = lasagne.layers.InputLayer(
         shape=(None, max_length, feat_dim), name='Input', input_var = input_var)
@@ -66,7 +66,10 @@ def build(input_var, dropout_rate_dense = 0.2, dropout_rate_pre = 0.2, n_layers_
         att_representation = AttentionLayer(layer)
         attention_layers.append(att_representation)
         for iLayer in range(n_dense):
-            att_representation= lasagne.layers.DropoutLayer(att_representation,p = dropout_rate_dense)
+            if batchnorm:
+                att_representation= lasagne.layers.BatchNormLayer(att_representation,gamma=None) #Batch Norm
+            else:
+                att_representation= lasagne.layers.DropoutLayer(att_representation,p = dropout_rate_dense)
             att_representation= lasagne.layers.DenseLayer(att_representation, num_units= n_hidden_dense, nonlinearity = lasagne.nonlinearities.leaky_rectify,W = lasagne.init.Orthogonal(np.sqrt(2/(1+0.01**2))),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
             #layer = lasagne.layers.DenseLayer(layer, num_units= n_hidden_dense, nonlinearity = lasagne.nonlinearities.tanh,W = lasagne.init.Orthogonal(np.sqrt(2/(1+0.01**2))),b = lasagne.init.Constant(1)) ## W_{yh_back}+b
             layers['dense_%d_%d'%(iLayer,i_class)] =att_representation
@@ -101,7 +104,7 @@ def do_train(data, data_val, data_test, **classifier_parameters):
                       }
     '''
     import time
-    batch_maker = batch.Batch(data, isShuffle = True, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2, max_batchsize=400)
+    batch_maker = batch.Batch(data, isShuffle = True, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2, max_batchsize=800)
     b_v = batch.Batch(data_val, isShuffle = True, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2, max_batchsize=400)
     b_t = batch.Batch(data_test, isShuffle = True, seg_window = classifier_parameters['max_length'], seg_hop = classifier_parameters['max_length']/2, max_batchsize=400)
 
@@ -115,10 +118,10 @@ def do_train(data, data_val, data_test, **classifier_parameters):
         network,  deterministic=False)+eps,target_output)
     loss_eval  = cost(lasagne.layers.get_output(
         network,  deterministic=True)+eps,target_output)
-    all_params = lasagne.layers.get_all_params(network)
+    all_params = lasagne.layers.get_all_params(network, trainable=True)
     updates = lasagne.updates.adadelta(loss_train,all_params,learning_rate=1.0)
     #updates = lasagne.updates.momentum(loss_train , all_params,
-                                    #learning_rate, momentum)
+                                    #0.001, 0.9)
     pred_fun = lasagne.layers.get_output(
             network, deterministic=True)
     train = theano.function([input_var, target_output],loss_train , updates=updates)
@@ -131,7 +134,7 @@ def do_train(data, data_val, data_test, **classifier_parameters):
 
     #err, cost_test = calc_error(data_val,predict)
     epoch = 0
-    no_best = 50
+    no_best = 10
     best_cost = np.inf
     best_epoch = epoch
     model_params = []
@@ -181,6 +184,7 @@ def do_train(data, data_val, data_test, **classifier_parameters):
                 break
             epoch += 1
     except:
+        print "Unexpectedly stoped, return model %d"%best_epoch
         if best_epoch == 0:
             return (classifier_parameters, model_params[-1])
         else:

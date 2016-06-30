@@ -121,7 +121,7 @@ def do_train(data, data_val, data_test, **classifier_parameters):
         nnet,  deterministic=False)+eps,target_output,mask)
     loss_eval  = cost(lasagne.layers.get_output(
         nnet,  deterministic=True)+eps,target_output, mask)
-    all_params = lasagne.layers.get_all_params(nnet)
+    all_params = lasagne.layers.get_all_params(nnet, trainable=True)
     updates = lasagne.updates.adadelta(loss_train,all_params,learning_rate=1.0)
     #updates = lasagne.updates.momentum(loss_train , all_params,
                                     #learning_rate, momentum)
