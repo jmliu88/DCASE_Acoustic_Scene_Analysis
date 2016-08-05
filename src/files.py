@@ -278,3 +278,20 @@ def load_text(filename):
 
     with open(filename, 'r') as f:
         return f.readlines()
+def load_labels(filename):
+    """Load label from file
+
+    Parameters
+    ----------
+    filename: str
+        Path to file
+
+    Returns
+    -------
+    labels: array of string
+        Loaded labels.
+
+    """
+
+    with open(filename, 'r') as f:
+        return [x.strip() for x in f.readlines()]

@@ -2,44 +2,89 @@ import numpy as np
 import pdb
 import random
 import sys
+
+from src.files import *
+labels = load_labels('data/TUT-acoustic-scenes-2016-development/labels.txt')
+#['residential_area',
+#            'bus',
+#            'cafe',
+#            'car',
+#            'city_center',
+#            'forest_path',
+#            'grocery_store',
+#            'home',
+#            'library',
+#            'metro_station',
+#            'office',
+#            'train',
+#            'tram',
+#            'urban_park',
+#            'beach',
+#            'cafe/restaurant',
+#            'park',
+#            'lakeside_beach']
 def label2index(lab):
-# TODO
-    pass
+    ''' Find the corresponding index of label from the global label variable.
+        input:
+        -----
+        label in string
+        output:
+        -----
+        index of the label
+    '''
+    dic = dict(zip(labels,range(len(labels))))
+    try:
+        ind = dic[lab]
+    except KeyError as e:
+        print "lab:%s is not in dict."%lab
+        raise(e)
+    return ind
+
 class Batch():
-    def __init__(self, data, seg_size = 1000,  MAX_BATCH_SIZE = 100,isShuffle = False):
+    ''' Generate batch from data.
+        e.g.:
+        Batch_maker = Batch(data)
+    '''
+    def __init__(self, data, seg_window = 1000, seg_hop = 100,  max_batchsize = 100,isShuffle = False):
         self.data = data
-        self.seg_size = seg_size
+        self.seg_window = seg_window
+        self.seg_hop = seg_hop
         self.get_seg()
         self.index = range(len(self.seg)) # index of samples. access data by this index later
+        self.index_bkup = self.index
+        self.isShuffle = isShuffle
         if isShuffle:
             random.shuffle(self.index)
-        self.batchsize= MAX_BATCH_SIZE
+        self.batchsize= max_batchsize
         self.n_batch = len(self.index)/self.batchsize
     def get_seg(self):
         data = self.data
-        seg_size = self.seg_size
+        seg_window = self.seg_window
+        seg_hop = self.seg_hop
         seg = []
         for k in data:
             num_frames = data[k].shape[0]
-            for i_start in range(0,(num_frames-seg_size)/seg_size):
-                seg.append((k,i_start,i_start+seg_size))
+            for i_start in range(0,(num_frames-seg_window)/seg_hop):
+                seg.append((k,i_start*seg_hop,i_start*seg_hop+seg_window))
         self.seg = seg
     def get_batch(self):
-        pdb.set_trace()
+        #pdb.set_trace()
+        index = self.index
         batchsize = min(self.batchsize, len(self.index))
-        x = np.zeros(shape=(batchsize,self.seg_size,self.data.values()[0].shape[1]))
-        y = np.zeros(shape=(batchsize,1))
-        m = np.ones(shape=(batchsize,self.seg_size,self.data.values()[0].shape[1]))
+        x = np.zeros(shape=(batchsize,self.seg_window,self.data.values()[0].shape[1]),dtype='float32')
+        y = np.zeros(shape=(batchsize,1),dtype='float32')
+        m = np.ones(shape=(batchsize,self.seg_window),dtype='float32')
         for i in range(batchsize):
-            k,st,en = self.seg[i]
+            k,st,en = self.seg[index[i]]
             x[i] = self.data[k][st:en]
+            assert(not np.any(np.isnan(x[i])))
             y[i] = label2index(k)
         self.index = np.delete(self.index,range(batchsize))
 
         return x,y,m
 ## auxiliary functions below. makes Batch iteratable
     def reset(self):
-        self.index = range(len(self.seg)) # index of samples. access data by this index later
+        self.index = self.index_bkup # index of samples. access data by this index later
         if self.isShuffle:
             random.shuffle(self.index)
     def __iter__(self):
@@ -50,7 +95,44 @@ class Batch():
             raise StopIteration
         else:
             return self.get_batch()
+def make_batch(feature_data, size=1000, hop=100):
+    ''' Split feature_data into batches with fixed length (size).
+    '''
+    length = feature_data.shape[0]
+    if length>size:
+        n_seg = (length-size)/hop + 1
+        x = np.zeros(shape=(n_seg, size,feature_data.shape[1]),dtype='float32')
+        m = np.ones(shape=(n_seg, size),dtype='float32')
+        for i in range(0,n_seg):
+            x[i] = feature_data[i*hop:i*hop+size]
+    else:
+        x = np.lib.pad(feature_data,((0,size-length),(0,0)), 'constant', constant_values = 0)
+        x = np.expand_dims(x,axis=0)
+        m = np.zeros(shape=(1,size))
+        m[:,:length] = 1
+    return x,m
+
+def make_context(x, context = 15):
+    left_padding = right_padding = context/2
+    n_sample, length, feat_dim = x.shape
+    x_extend = np.zeros(shape = (x.shape[0],x.shape[1], x.shape[2]*context), dtype='float32')
+
+
+    x = np.lib.pad(x,((0,0),(left_padding,right_padding),(0,0)), 'edge')
+    ## Magic here
+    for i in range(context):
+        x_extend[:, :, feat_dim*i:feat_dim*(i+1)] = x[:, i:length+i, :]
+    return x_extend
+
 if __name__ == '__main__':
+    x = np.array([[1,2,3]])
+    x = np.repeat(x,5,axis=0)
+    x = np.expand_dims(x,axis=0)
+    print x
+    x_hat = make_context(x,context = 1)
+    print x_hat
+    x_hat = make_context(x,context = 3)
+    print x_hat[0,0,:]
     pass
     ## untested
     #data = sys.argv[1]

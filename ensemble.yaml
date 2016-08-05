@@ -1,0 +1,11 @@
+type:
+  majority_vote
+models:
+  ff_att_class_13D_8kHz_melspec.yaml
+  models_yaml/task1_scene_classification_dnn_74.yaml
+  models_yaml/task1_scene_classification_ff_att_class_1.yaml
+  models_yaml/task1_scene_classification_ff_att_class_4.yaml
+  models_yaml/task1_scene_classification_ff_att_class_5.yaml
+  models_yaml/task1_scene_classification_ff_att_class_6.yaml
+  models_yaml/task1_scene_classification_ff_att_class_7.yaml
+  models_yaml/task1_scene_classification_ff_att_class_8.yaml

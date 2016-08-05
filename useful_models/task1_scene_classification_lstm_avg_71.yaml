@@ -25,7 +25,7 @@ general:
 path:
   data: data/
 
-  base: system/baseline_dcase2016_task1/
+  base: system/baseline_dcase2016_task1_lstm_avg/
   features: features/
   feature_normalizers: feature_normalizers/
   models: acoustic_models/
@@ -37,6 +37,7 @@ path:
 # Feature extraction
 # ==========================================================
 features:
+  type: mfcc
   fs: 44100
   win_length_seconds: 0.04
   hop_length_seconds: 0.02
@@ -45,7 +46,6 @@ features:
   include_delta: true           #
   include_acceleration: true    #
 
-  type: mfcc
   window: hamming_asymmetric  # [hann_asymmetric, hamming_asymmetric]
   n_mfcc: 20                  # Number of MFCC coefficients
   n_mels: 40                  # Number of MEL bands used
@@ -64,30 +64,17 @@ features:
 # Classifier
 # ==========================================================
 classifier:
-  method: gmm                   # The system supports only gmm
-
-  audio_error_handling:         # handling audio errors (temporary microphone failure and radio signal interferences from mobile phones)
-    clean_data: false           # exclude audio errors from training audio
-
+  method: lstm_average                  # The system supports only gmm
   parameters: !!null            # Parameters are copied from classifier_parameters based on defined method
-  overwrite: false
+  overwrite: true
 
 classifier_parameters:
-  gmm:
-    n_components: 16            # Number of Gaussian components
-    covariance_type: diag       # [diag|full] Diagonal or full covariance matrix
-    random_state: 0
-    thresh: !!null
-    tol: 0.001
-    min_covar: 0.001
-    n_iter: 40
-    n_init: 1
-    params: wmc
-    init_params: wmc
-
-# ==========================================================
-# Recognizer
-# ==========================================================
-recognizer:
-  audio_error_handling:         # Handling audio errors (temporary microphone failure and radio signal interferences from mobile phones)
-    clean_data: false           # Exclude audio errors from test audio
+  lstm_average:
+    n_layers: 2
+    n_hidden_blstm: 126
+    dropout_rate_dense: 0.5
+    n_dense: 3
+    n_hidden_dense: 125
+    n_class: 15
+    max_length: 100
+    feat_dim: 60

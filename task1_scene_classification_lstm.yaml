@@ -5,9 +5,10 @@ flow:
   initialize: true
   extract_features: true
   feature_normalizer: true
-  train_system: true
+  train_system: false
   test_system: true
   evaluate_system: true
+  train_system_parallel: true
 
 # ==========================================================
 # General
@@ -16,7 +17,7 @@ general:
   development_dataset: TUTAcousticScenes_2016_DevelopmentSet
   challenge_dataset: TUTAcousticScenes_2016_EvaluationSet
 
-  overwrite: false              # Overwrite previously stored data
+  overwrite: false # Overwrite previously stored data
 
 # ==========================================================
 # Paths
@@ -24,7 +25,7 @@ general:
 path:
   data: data/
 
-  base: system/baseline_dcase2016_task1/
+  base: system/baseline_dcase2016_task1_lstm_parrel/
   features: features/
   feature_normalizers: feature_normalizers/
   models: acoustic_models/
@@ -36,6 +37,7 @@ path:
 # Feature extraction
 # ==========================================================
 features:
+  type: mfcc
   fs: 44100
   win_length_seconds: 0.04
   hop_length_seconds: 0.02
@@ -44,14 +46,13 @@ features:
   include_delta: true           #
   include_acceleration: true    #
 
-  mfcc:
-    window: hamming_asymmetric  # [hann_asymmetric, hamming_asymmetric]
-    n_mfcc: 20                  # Number of MFCC coefficients
-    n_mels: 40                  # Number of MEL bands used
-    n_fft: 2048                 # FFT length
-    fmin: 0                     # Minimum frequency when constructing MEL bands
-    fmax: 22050                 # Maximum frequency when constructing MEL band
-    htk: false                  # Switch for HTK-styled MEL-frequency equation
+  window: hamming_asymmetric  # [hann_asymmetric, hamming_asymmetric]
+  n_mfcc: 20                  # Number of MFCC coefficients
+  n_mels: 40                  # Number of MEL bands used
+  n_fft: 2048                 # FFT length
+  fmin: 0                     # Minimum frequency when constructing MEL bands
+  fmax: 22050                 # Maximum frequency when constructing MEL band
+  htk: false                  # Switch for HTK-styled MEL-frequency equation
 
   mfcc_delta:
     width: 9
@@ -65,13 +66,21 @@ features:
 classifier:
   method: lstm                  # The system supports only gmm
   parameters: !!null            # Parameters are copied from classifier_parameters based on defined method
+  overwrite: true
+
+batch:
+  win_length: 100
+  win_hop: 100
+  context_right: 7
+  context_right: 7
 
 classifier_parameters:
   lstm:
-    n_layers: 3
+    n_layers: 2
     n_hidden_blstm: 126
-    dropout_rate_blstm: 0.2
     dropout_rate_dense: 0.5
     n_dense: 3
-    n_hidden_dense: 125
-    n_class: 10
+    n_hidden_dense: 512
+    n_class: 15
+    max_length: 100
+    feat_dim: 900

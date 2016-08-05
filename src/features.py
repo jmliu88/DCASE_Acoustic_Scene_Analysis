@@ -7,7 +7,7 @@ import scipy
 
 
 def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include_delta=True,
-                       include_acceleration=True, mfcc_params=None, delta_params=None, acceleration_params=None):
+                       include_acceleration=True, feature_type = None, mfcc_params=None, delta_params=None, acceleration_params=None):
     """Feature extraction, MFCC based features
 
     Outputs features in dict, format:
@@ -85,6 +85,7 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
                                                    hop_length=mfcc_params['hop_length'],
                                                    center=True,
                                                    window=window))**2
+
     mel_basis = librosa.filters.mel(sr=fs,
                                     n_fft=mfcc_params['n_fft'],
                                     n_mels=mfcc_params['n_mels'],
@@ -92,20 +93,27 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
                                     fmax=mfcc_params['fmax'],
                                     htk=mfcc_params['htk'])
     mel_spectrum = numpy.dot(mel_basis, magnitude_spectrogram)
-    mfcc = librosa.feature.mfcc(S=librosa.logamplitude(mel_spectrum))
-    
+    mfcc = librosa.feature.mfcc(S=librosa.logamplitude(mel_spectrum),
+                                    n_mfcc=mfcc_params['n_mfcc'])
+
     # Collect the feature matrix
-    feature_matrix = mfcc
+    if feature_type == 'spectrum':
+        feature_matrix = magnitude_spectrogram
+    if feature_type == 'melspec':
+        feature_matrix = librosa.logamplitude(mel_spectrum)
+    if feature_type == 'mfcc':
+        feature_matrix = mfcc
+    feature = feature_matrix
     if include_delta:
         # Delta coefficients
-        mfcc_delta = librosa.feature.delta(mfcc, **delta_params)
+        mfcc_delta = librosa.feature.delta(feature, **delta_params)
 
         # Add Delta Coefficients to feature matrix
         feature_matrix = numpy.vstack((feature_matrix, mfcc_delta))
 
     if include_acceleration:
         # Acceleration coefficients (aka delta)
-        mfcc_delta2 = librosa.feature.delta(mfcc, order=2, **acceleration_params)
+        mfcc_delta2 = librosa.feature.delta(feature, order=2, **acceleration_params)
 
         # Add Acceleration Coefficients to feature matrix
         feature_matrix = numpy.vstack((feature_matrix, mfcc_delta2))
@@ -132,6 +140,12 @@ def feature_extraction(y, fs=44100, statistics=True, include_mfcc0=True, include
         return {
             'feat': feature_matrix}
 
+
+class FeatureNormalizerDummy(object):
+    def __init__(self, feature_matrix=None):
+        pass
+    def normalize(self, feature_matrix):
+        return feature_matrix
 
 class FeatureNormalizer(object):
     """Feature normalizer class
