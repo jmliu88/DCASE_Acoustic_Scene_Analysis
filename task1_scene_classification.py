@@ -99,17 +99,21 @@ def main(argv):
 
         # Collect files in train sets
         files = []
+        files_val = []
+        files_eval = []
         for fold in dataset.folds(mode=dataset_evaluation_mode):
             for item_id, item in enumerate(dataset.train(fold)):
                 if item['file'] not in files:
                     files.append(item['file'])
             for item_id, item in enumerate(dataset.val(fold)):
                 if item['file'] not in files:
-                    files.append(item['file'])
+                    files_val.append(item['file'])
             for item_id, item in enumerate(dataset.test(fold)):
                 if item['file'] not in files:
-                    files.append(item['file'])
+                    files_eval.append(item['file'])
         files = sorted(files)
+        files_val = sorted(files_val)
+        files_eval = sorted(files_eval)
 
         # Go through files and make sure all features are extracted
         do_feature_extraction(files=files,
@@ -118,6 +122,17 @@ def main(argv):
                               params=params['features'],
                               overwrite=params['general']['overwrite'])
 
+        do_feature_extraction(files=files_val,
+                              dataset=dataset,
+                              feature_path=params['path']['features'],
+                              params=params['features'],
+                              overwrite=params['general']['overwrite'])
+
+        do_feature_extraction(files=files_eval,
+                              dataset=dataset,
+                              feature_path=params['path']['features'],
+                              params=params['features'],
+                              overwrite=params['general']['overwrite'])
         foot()
 
     # Prepare feature normalizers
@@ -977,7 +992,8 @@ def do_system_training_parallel(dataset, model_path, feature_normalizer_path, fe
     # Fork len(fold) processes to process each fold respectively. The subprocess will be associated with diff gpus
     jobs = []
 
-    gpu_list = [3,5,6,7]
+    #gpu_list = [3,5,6,7]
+    gpu_list = [0,1,2,4]
     for fold in dataset.folds(mode=dataset_evaluation_mode):
         p=Process(target=do_fold_train_partial, kwargs={'fold':fold, 'device':'gpu%d'%gpu_list[fold-1], 'logging':os.path.join(model_path,'log_%d'%fold)})
         jobs.append(p)

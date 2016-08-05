@@ -36,7 +36,7 @@ def calc_error(b, predict):
     cost_val = cost_val /len(b.index_bkup)
     return err , cost_val
 
-def build(input_var, dropout_rate_dense = 0.2, dropout_rate_pre = 0.2, n_layers_pre = 3, n_hidden_pre = 125, n_dense = 3, n_hidden_dense= 256, n_attention=10, n_class = 10, max_length = 1000, feat_dim = 60, return_layers = False, batchnorm = False):
+def build(input_var, dropout_rate_dense = 0.2, dropout_rate_pre = 0.2, n_layers_pre = 3, n_hidden_pre = 125, n_dense = 3, n_hidden_dense= 256, n_attention=10, n_class = 10, max_length = 1000, feat_dim = 60, return_layers = False, batchnorm = False, note=None):
 
     l_in = lasagne.layers.InputLayer(
         shape=(None, max_length, feat_dim), name='Input', input_var = input_var)

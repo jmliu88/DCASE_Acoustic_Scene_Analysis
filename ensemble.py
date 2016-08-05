@@ -27,19 +27,32 @@ def prun_correleted_result(result_path_list, thres):
     result_dic = get_result_list(result_path_list)
     pick = {}
     max_uncor = 1
+    correlation_matrix = np.zeros(shape=(len(result_dic),len(result_dic)))
+    for i in range(len(result_dic.values())):
+        for j in range(len(result_dic.values())):
+            i_entry = [to_string(k) for k in result_dic.values()[i]]
+            j_entry = [to_string(k) for k in result_dic.values()[j]]
+            correlation_matrix[i,j] = sum(np.array(i_entry) != np.array(j_entry)) /float(len(i_entry))
+    uncorrelated_sum = np.mean(correlation_matrix,axis = 1)
+    max_uncor = np.max(uncorrelated_sum)
+    max_uncor_ind = np.argmax(uncorrelated_sum)
+    key = result_dic.keys()[max_uncor_ind]
+    pick.update({key:result_dic.pop(key)})
     while max_uncor > thres:
-        correlation_matrix = np.zeros(shape=(len(result_dic),len(result_dic)))
+        correlation_matrix = np.zeros(shape=(len(result_dic),len(pick)))
         for i in range(len(result_dic.values())):
-            for j in range(len(result_dic.values())):
+            for j in range(len(pick.values())):
+
                 i_entry = [to_string(k) for k in result_dic.values()[i]]
-                j_entry = [to_string(k) for k in result_dic.values()[j]]
+                j_entry = [to_string(k) for k in pick.values()[j]]
                 correlation_matrix[i,j] = sum(np.array(i_entry) != np.array(j_entry)) /float(len(i_entry))
         uncorrelated_sum = np.mean(correlation_matrix,axis = 1)
         max_uncor = np.max(uncorrelated_sum)
         max_uncor_ind = np.argmax(uncorrelated_sum)
         key = result_dic.keys()[max_uncor_ind]
         pick.update({key:result_dic.pop(key)})
-    #pdb.set_trace()
+
+        pdb.set_trace()
     return pick
 
 
@@ -161,8 +174,8 @@ if __name__ == "__main__":
                 results = weighted_vote(result_path_list, weight)
                 #results.append(get_prediction(os.path.join(result_path,'results_fold%d.txt'%i_file)))
             if ensemble_params['type'] == "uncorrelated_vote":
-                result_list = prun_correleted_result(result_path_list, 0.05 )
-                print result_path_list
+                result_list = prun_correleted_result(result_path_list, 0.08 )
+                print len(result_list)
                 results = vote(result_list)
                 pass
 
@@ -172,9 +185,12 @@ if __name__ == "__main__":
         do_system_evaluation(dataset,save_path,'folds')
     else:
         ## ensemble sumbision results
-        result_list = get_result_list(yamls)
+        result_path_list = []
+        for i_model in yamls:
+            result_path_list.append(i_model)
         if ensemble_params['type'] == "majority_vote":
+            result_list = get_result_list(result_path_list)
             results = vote(result_list)
             #results.append(get_prediction(os.path.join(result_path,'results_fold%d.txt'%i_file)))
-        save_file=os.path.join(save_path,'results_fold%d.txt'%i_file)
+        save_file=os.path.join(save_path,'results_fold0.txt')
         write(save_file,results)

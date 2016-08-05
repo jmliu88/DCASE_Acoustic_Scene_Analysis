@@ -242,26 +242,26 @@ class Dataset(object):
 
         """
 
-        if self.meta_data is None:
-            self.meta_data = []
+        if self.meta_data_eval is None:
+            self.meta_data_eval = []
             meta_id = 0
 
-            if os.path.isfile(self.meta_file):
-                f = open(self.meta_file, 'rt')
+            if os.path.isfile(self.meta_file_eval):
+                f = open(self.meta_file_eval, 'rt')
                 try:
                     reader = csv.reader(f, delimiter='\t')
                     for row in reader:
                         if len(row) == 2:
                             # Scene meta
-                            self.meta_data.append({'file': row[0], 'scene_label': row[1].rstrip()})
+                            self.meta_data_eval.append({'file': row[0], 'scene_label': row[1].rstrip()})
                         elif len(row) == 4:
                             # Audio tagging meta
-                            self.meta_data.append(
+                            self.meta_data_eval.append(
                                 {'file': row[0], 'scene_label': row[1].rstrip(), 'tag_string': row[2].rstrip(),
                                  'tags': row[3].split(';')})
                         elif len(row) == 6:
                             # Event meta
-                            self.meta_data.append({'file': row[0],
+                            self.meta_data_eval.append({'file': row[0],
                                                    'scene_label': row[1].rstrip(),
                                                    'event_onset': float(row[2]),
                                                    'event_offset': float(row[3]),
@@ -273,9 +273,9 @@ class Dataset(object):
                 finally:
                     f.close()
             else:
-                raise IOError("Meta file not found [%s]" % self.meta_file)
+                raise IOError("Meta file not found [%s]" % self.meta_file_eval)
 
-        return self.meta_data
+        return self.meta_data_eval
 
     @property
     def meta_val(self):
@@ -297,26 +297,26 @@ class Dataset(object):
 
         """
 
-        if self.meta_data is None:
-            self.meta_data = []
+        if self.meta_data_val is None:
+            self.meta_data_val = []
             meta_id = 0
 
-            if os.path.isfile(self.meta_file):
-                f = open(self.meta_file, 'rt')
+            if os.path.isfile(self.meta_file_val):
+                f = open(self.meta_file_val, 'rt')
                 try:
                     reader = csv.reader(f, delimiter='\t')
                     for row in reader:
                         if len(row) == 2:
                             # Scene meta
-                            self.meta_data.append({'file': row[0], 'scene_label': row[1].rstrip()})
+                            self.meta_data_val.append({'file': row[0], 'scene_label': row[1].rstrip()})
                         elif len(row) == 4:
                             # Audio tagging meta
-                            self.meta_data.append(
+                            self.meta_data_val.append(
                                 {'file': row[0], 'scene_label': row[1].rstrip(), 'tag_string': row[2].rstrip(),
                                  'tags': row[3].split(';')})
                         elif len(row) == 6:
                             # Event meta
-                            self.meta_data.append({'file': row[0],
+                            self.meta_data_val.append({'file': row[0],
                                                    'scene_label': row[1].rstrip(),
                                                    'event_onset': float(row[2]),
                                                    'event_offset': float(row[3]),
@@ -328,9 +328,9 @@ class Dataset(object):
                 finally:
                     f.close()
             else:
-                raise IOError("Meta file not found [%s]" % self.meta_file)
+                raise IOError("Meta file not found [%s]" % self.meta_file_val)
 
-        return self.meta_data
+        return self.meta_data_val
 
 
     @property
